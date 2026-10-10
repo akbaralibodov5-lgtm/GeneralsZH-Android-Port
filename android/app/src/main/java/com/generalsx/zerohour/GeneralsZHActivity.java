@@ -102,6 +102,37 @@ public class GeneralsZHActivity extends SDLActivity {
     // back through the two native methods, which only queue for the engine's next frame.
     private TextEditorBar textEditorBar;
 
+    private static native void nativeTextEditorChanged(String text, int serial);
+    private static native void nativeTextEditorDone(String text, boolean submit, int serial);
+
+    @SuppressWarnings("unused")
+    public void showTextEditor(final String text, final int maxLength, final int flags, final int serial) {
+        runOnUiThread(() -> {
+            if (mLayout == null) return;
+            if (textEditorBar == null) {
+                textEditorBar = new TextEditorBar(this, mLayout, new TextEditorBar.Listener() {
+                    @Override public void onChanged(String changed, int changedSerial) {
+                        nativeTextEditorChanged(changed, changedSerial);
+                    }
+                    @Override public void onDone(String finished, boolean submit, int doneSerial) {
+                        nativeTextEditorDone(finished, submit, doneSerial);
+                    }
+                }, () -> {
+                    if (mSurface != null) mSurface.requestFocus();
+                });
+            }
+            textEditorBar.show(text, maxLength, flags, serial);
+        });
+    }
+
+    @SuppressWarnings("unused")
+    public void hideTextEditor() {
+        runOnUiThread(() -> {
+            if (textEditorBar != null) textEditorBar.hide();
+        });
+    }
+
+
     // Optional transparent PC-style keyboard overlay, initialized after SDL creates the layout.
     private VirtualKeyboardOverlay virtualKeyboardOverlay;
     private static native void nativeVirtualKey(int scanCode, boolean down);
