@@ -58,12 +58,12 @@
 #include "Common/GlobalData.h"
 #include "GXTrace.h"
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
 
 #if defined(__ANDROID__)
 #include <jni.h>
 
-// Synthetic events enter the same SDL queue as physical USB/Bluetooth keyboards.
-// SDL3GameEngine::pollSDL3Events() will then route them to SDL3Keyboard.
+// Synthetic events enter SDL's queue and are dispatched by the engine's normal input loop.
 extern "C" JNIEXPORT void JNICALL
 Java_com_generalsx_zerohour_GeneralsZHActivity_nativeVirtualKey(
 	JNIEnv*, jclass, jint scanCode, jboolean down)
@@ -79,8 +79,6 @@ Java_com_generalsx_zerohour_GeneralsZHActivity_nativeVirtualKey(
 	SDL_PushEvent(&event);
 }
 #endif
-
-#include <SDL3/SDL_vulkan.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
