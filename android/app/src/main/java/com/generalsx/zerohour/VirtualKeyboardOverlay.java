@@ -41,7 +41,7 @@ final class VirtualKeyboardOverlay {
             new Key("1", 30), new Key("2", 31), new Key("3", 32),
             new Key("4", 33), new Key("5", 34), new Key("6", 35),
             new Key("7", 36), new Key("8", 37), new Key("9", 38),
-            new Key("0", 39), new Key("-", 45), new Key("+", 46),
+            new Key("0", 39), new Key("-", 45), new Key("=", 46),
             new Key("⌫", 42)
         },
         {
