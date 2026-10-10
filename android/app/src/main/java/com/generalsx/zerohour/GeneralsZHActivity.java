@@ -38,6 +38,14 @@ import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.view.Display;
 import android.view.KeyEvent;
+import android.graphics.drawable.GradientDrawable;
+import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.view.DisplayCutout;
 import android.view.RoundedCorner;
 import android.view.WindowInsets;
@@ -102,6 +110,59 @@ public class GeneralsZHActivity extends SDLActivity {
     // back through the two native methods, which only queue for the engine's next frame.
     private TextEditorBar textEditorBar;
 
+    // WARU Edition: in-game transparent PC-style keyboard overlay. Every virtual
+    // press is sent through JNI into SDL3's event queue (not merely drawn on screen).
+    private LinearLayout virtualKeyboardPanel;
+    private Button virtualKeyboardToggle;
+    private boolean virtualKeyboardVisible;
+    private static native void nativeVirtualKey(int scanCode, boolean down);
+
+    private static final class VirtualKey {
+        final String label;
+        final int scanCode;
+        VirtualKey(String label, int scanCode) { this.label = label; this.scanCode = scanCode; }
+    }
+
+    private static final VirtualKey[][] VIRTUAL_KEY_ROWS = new VirtualKey[][] {
+        {
+            new VirtualKey("ESC", 41), new VirtualKey("F1", 58), new VirtualKey("F2", 59),
+            new VirtualKey("F3", 60), new VirtualKey("F4", 61), new VirtualKey("F5", 62),
+            new VirtualKey("F6", 63), new VirtualKey("F7", 64), new VirtualKey("F8", 65),
+            new VirtualKey("F9", 66), new VirtualKey("F10", 67), new VirtualKey("F11", 68),
+            new VirtualKey("F12", 69)
+        },
+        {
+            new VirtualKey("1", 30), new VirtualKey("2", 31), new VirtualKey("3", 32),
+            new VirtualKey("4", 33), new VirtualKey("5", 34), new VirtualKey("6", 35),
+            new VirtualKey("7", 36), new VirtualKey("8", 37), new VirtualKey("9", 38),
+            new VirtualKey("0", 39), new VirtualKey("⌫", 42), new VirtualKey("↵", 40)
+        },
+        {
+            new VirtualKey("Q", 20), new VirtualKey("W", 26), new VirtualKey("E", 8),
+            new VirtualKey("R", 21), new VirtualKey("T", 23), new VirtualKey("Y", 28),
+            new VirtualKey("U", 24), new VirtualKey("I", 12), new VirtualKey("O", 18),
+            new VirtualKey("P", 19), new VirtualKey("[", 47), new VirtualKey("]", 48)
+        },
+        {
+            new VirtualKey("A", 4), new VirtualKey("S", 22), new VirtualKey("D", 7),
+            new VirtualKey("F", 9), new VirtualKey("G", 10), new VirtualKey("H", 11),
+            new VirtualKey("J", 13), new VirtualKey("K", 14), new VirtualKey("L", 15),
+            new VirtualKey(";", 51), new VirtualKey("'", 52), new VirtualKey("DEL", 76)
+        },
+        {
+            new VirtualKey("SHIFT", 225), new VirtualKey("Z", 29), new VirtualKey("X", 27),
+            new VirtualKey("C", 6), new VirtualKey("V", 25), new VirtualKey("B", 5),
+            new VirtualKey("N", 17), new VirtualKey("M", 16), new VirtualKey(",", 54),
+            new VirtualKey(".", 55), new VirtualKey("↑", 82), new VirtualKey("SHIFT", 229)
+        },
+        {
+            new VirtualKey("CTRL", 224), new VirtualKey("ALT", 226), new VirtualKey("←", 80),
+            new VirtualKey("↓", 81), new VirtualKey("→", 79), new VirtualKey("SPACE", 44),
+            new VirtualKey("ALT", 230), new VirtualKey("CTRL", 228), new VirtualKey("TAB", 43),
+            new VirtualKey("ENTER", 40)
+        }
+    };
+
     private static native void nativeTextEditorChanged(String text, int serial);
     private static native void nativeTextEditorDone(String text, boolean submit, int serial);
 
@@ -136,6 +197,131 @@ public class GeneralsZHActivity extends SDLActivity {
                 textEditorBar.hide();
             }
         });
+    }
+
+
+    @Override
+    protected void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        // Wait until SDLActivity has attached its game surface and root layout.
+        if (mLayout != null) {
+            installVirtualKeyboard();
+        }
+    }
+
+    private void installVirtualKeyboard() {
+        if (mLayout == null || virtualKeyboardToggle != null) return;
+
+        virtualKeyboardToggle = new Button(this);
+        virtualKeyboardToggle.setText("⌨");
+        virtualKeyboardToggle.setTextSize(20);
+        virtualKeyboardToggle.setTextColor(0xFFFFFFFF);
+        virtualKeyboardToggle.setAllCaps(false);
+        virtualKeyboardToggle.setMinWidth(dp(48));
+        virtualKeyboardToggle.setMinHeight(dp(44));
+        virtualKeyboardToggle.setPadding(dp(8), dp(2), dp(8), dp(2));
+        virtualKeyboardToggle.setBackground(roundBackground(0xD91B2735, 0xFF75BFFF));
+        virtualKeyboardToggle.setContentDescription("Show or hide game keyboard");
+        virtualKeyboardToggle.setOnClickListener(v -> setVirtualKeyboardVisible(!virtualKeyboardVisible));
+
+        RelativeLayout.LayoutParams toggleParams =
+            new RelativeLayout.LayoutParams(dp(52), dp(48));
+        toggleParams.addRule(RelativeLayout.ALIGN_PARENT_END);
+        toggleParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+        toggleParams.setMargins(0, dp(10), dp(10), 0);
+        mLayout.addView(virtualKeyboardToggle, toggleParams);
+        virtualKeyboardToggle.bringToFront();
+
+        virtualKeyboardPanel = new LinearLayout(this);
+        virtualKeyboardPanel.setOrientation(LinearLayout.VERTICAL);
+        virtualKeyboardPanel.setPadding(dp(6), dp(5), dp(6), dp(5));
+        virtualKeyboardPanel.setBackground(roundBackground(0xA8151D26, 0x885C9DCD));
+        virtualKeyboardPanel.setClickable(true);
+        virtualKeyboardPanel.setFocusable(false);
+
+        TextView title = new TextView(this);
+        title.setText("WARU  •  PC KEYBOARD");
+        title.setTextColor(0xFFDDEEFF);
+        title.setTextSize(11);
+        title.setGravity(Gravity.CENTER_VERTICAL);
+        title.setPadding(dp(4), 0, dp(4), dp(3));
+        virtualKeyboardPanel.addView(title, new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(20)));
+
+        for (VirtualKey[] row : VIRTUAL_KEY_ROWS) {
+            LinearLayout keys = new LinearLayout(this);
+            keys.setOrientation(LinearLayout.HORIZONTAL);
+            keys.setGravity(Gravity.CENTER);
+            for (VirtualKey key : row) {
+                Button button = new Button(this);
+                button.setText(key.label);
+                button.setTextColor(0xFFF1F6FC);
+                button.setTextSize(key.label.length() > 3 ? 9 : 11);
+                button.setAllCaps(false);
+                button.setMinWidth(0);
+                button.setMinimumWidth(0);
+                button.setMinHeight(0);
+                button.setMinimumHeight(0);
+                button.setPadding(dp(1), 0, dp(1), 0);
+                button.setBackground(roundBackground(0xC52C3949, 0x775B7692));
+                button.setFocusable(false);
+                button.setLongClickable(false);
+                button.setOnTouchListener((v, event) -> {
+                    if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                        nativeVirtualKey(key.scanCode, true);
+                        v.setAlpha(0.70f);
+                        return true;
+                    }
+                    if (event.getAction() == MotionEvent.ACTION_UP
+                            || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                        nativeVirtualKey(key.scanCode, false);
+                        v.setAlpha(1.0f);
+                        return true;
+                    }
+                    return true;
+                });
+                LinearLayout.LayoutParams keyParams = new LinearLayout.LayoutParams(
+                    0, dp(34), key.label.equals("SPACE") ? 2.8f :
+                    (key.label.length() > 3 ? 1.25f : 1.0f));
+                keyParams.setMargins(dp(1), dp(1), dp(1), dp(1));
+                keys.addView(button, keyParams);
+            }
+            virtualKeyboardPanel.addView(keys, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
+        }
+
+        RelativeLayout.LayoutParams panelParams = new RelativeLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        panelParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
+        panelParams.setMargins(dp(6), 0, dp(6), dp(8));
+        virtualKeyboardPanel.setVisibility(View.GONE);
+        mLayout.addView(virtualKeyboardPanel, panelParams);
+        virtualKeyboardToggle.bringToFront();
+    }
+
+    private void setVirtualKeyboardVisible(boolean visible) {
+        virtualKeyboardVisible = visible;
+        if (virtualKeyboardPanel != null) {
+            virtualKeyboardPanel.setVisibility(visible ? View.VISIBLE : View.GONE);
+            if (visible) virtualKeyboardPanel.bringToFront();
+        }
+        if (virtualKeyboardToggle != null) {
+            virtualKeyboardToggle.setText(visible ? "✕" : "⌨");
+            virtualKeyboardToggle.bringToFront();
+        }
+        if (mSurface != null && !visible) mSurface.requestFocus();
+    }
+
+    private GradientDrawable roundBackground(int fill, int stroke) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(fill);
+        drawable.setCornerRadius(dp(6));
+        drawable.setStroke(dp(1), stroke);
+        return drawable;
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     // Back closes the bar (keeping the text) instead of reaching the game. While the keyboard
