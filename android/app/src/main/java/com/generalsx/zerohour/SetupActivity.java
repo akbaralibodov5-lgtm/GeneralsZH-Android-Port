@@ -457,13 +457,18 @@ public class SetupActivity extends Activity {
 
         UiKit.button(folder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
             getString(R.string.setup_button_select_game_folder), this::onSelectGameFolder);
-        TextView modPathStatus = UiKit.body(folder, null);
-        modPathStatus.setText(modPathSummary());
-        modPathStatus.setTextIsSelectable(true);
+        if (getSavedModPath() != null) {
+            TextView modPathStatus = UiKit.body(folder, modPathSummary());
+            modPathStatus.setTextIsSelectable(true);
+        } else {
+            UiKit.supporting(folder, modPathSummary());
+        }
         UiKit.button(folder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
             getString(R.string.setup_button_select_mod_folder), this::onSelectModFolder);
-        UiKit.button(folder, UiKit.BTN_TONAL, R.drawable.ic_gzh_broom,
-            getString(R.string.setup_button_clear_mod_folder), this::onClearModFolder);
+        if (getSavedModPath() != null) {
+            UiKit.button(folder, UiKit.BTN_TONAL, R.drawable.ic_gzh_broom,
+                getString(R.string.setup_button_clear_mod_folder), this::onClearModFolder);
+        }
         UiKit.button(folder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
             getString(R.string.setup_button_select_base_generals), this::onSelectBaseGeneralsFolder);
         UiKit.button(folder, UiKit.BTN_DANGER, R.drawable.ic_gzh_broom,
