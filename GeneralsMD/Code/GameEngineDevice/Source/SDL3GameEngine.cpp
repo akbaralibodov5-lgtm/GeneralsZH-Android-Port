@@ -59,6 +59,10 @@
 #include "GXTrace.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
+#if defined(__ANDROID__)
+#include <jni.h>
+#endif
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -68,16 +72,20 @@
 #include "Common/GameAudio.h"
 #include "GameLogic/GameLogic.h"
 #include "Common/FramePacer.h"
+
 #if defined(__ANDROID__)
 // Forward-declared like W3DProjectedShadow.cpp does: d3d8gles.h is not on this target's include
 // path, and everything links into the same libmain.so. See gles_pipeline.cpp.
 extern "C" void d3d8gles_SetPresentUncapped(bool uncapped);
 #endif
+
 #include "SDL3Device/GameClient/TouchInput.h"
 #include "SDL3Device/GameClient/AndroidTextEditor.h"
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
 #endif
+
+
 
 // GeneralsX @build Android port 06/07/2026 Shared guard for the touch-first
 // mobile platforms. The gesture translator and app-lifecycle render gate below
@@ -89,6 +97,27 @@ extern "C" void d3d8gles_SetPresentUncapped(bool uncapped);
 #if (defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE) || defined(__ANDROID__)
 #define SAGE_MOBILE_PLATFORM 1
 #endif
+
+#if defined(__ANDROID__)
+#include <jni.h>
+
+// Virtual key presses share the SDL event queue and dispatch path used by physical keyboards.
+extern "C" JNIEXPORT void JNICALL
+Java_com_generalsx_zerohour_GeneralsZHActivity_nativeVirtualKey(
+	JNIEnv*, jclass, jint scanCode, jboolean down)
+{
+	SDL_Event event{};
+	event.type = down == JNI_TRUE ? SDL_EVENT_KEY_DOWN : SDL_EVENT_KEY_UP;
+	event.key.type = down == JNI_TRUE ? SDL_EVENT_KEY_DOWN : SDL_EVENT_KEY_UP;
+	event.key.scancode = static_cast<SDL_Scancode>(scanCode);
+	event.key.key = SDL_GetKeyFromScancode(event.key.scancode, SDL_KMOD_NONE, false);
+	event.key.down = (down == JNI_TRUE);
+	event.key.repeat = false;
+	event.key.timestamp = SDL_GetTicksNS();
+	SDL_PushEvent(&event);
+}
+#endif
+
 
 // Extern globals for input devices (set by GameClient)
 extern Mouse *TheMouse;

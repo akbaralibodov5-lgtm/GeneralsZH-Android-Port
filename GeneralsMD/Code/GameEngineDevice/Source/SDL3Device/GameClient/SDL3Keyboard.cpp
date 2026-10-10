@@ -298,6 +298,17 @@ KeyVal SDL3Keyboard::translateScanCodeToKeyVal(SDL_Scancode scan)
 		case SDL_SCANCODE_8: return KEY_8;
 		case SDL_SCANCODE_9: return KEY_9;
 		case SDL_SCANCODE_0: return KEY_0;
+
+        // Printable punctuation keys exposed by the virtual PC keyboard.
+        case SDL_SCANCODE_MINUS: return KEY_MINUS;
+        case SDL_SCANCODE_EQUALS: return KEY_EQUAL;
+        case SDL_SCANCODE_LEFTBRACKET: return KEY_LBRACKET;
+        case SDL_SCANCODE_RIGHTBRACKET: return KEY_RBRACKET;
+        case SDL_SCANCODE_SEMICOLON: return KEY_SEMICOLON;
+        case SDL_SCANCODE_APOSTROPHE: return KEY_APOSTROPHE;
+        case SDL_SCANCODE_COMMA: return KEY_COMMA;
+        case SDL_SCANCODE_PERIOD: return KEY_PERIOD;
+        case SDL_SCANCODE_SLASH: return KEY_SLASH;
 		
 		// Letters (A-Z)
 		case SDL_SCANCODE_A: return KEY_A;
