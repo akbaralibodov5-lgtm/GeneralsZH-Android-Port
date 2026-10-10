@@ -776,17 +776,17 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		// Game data: highest priority is a folder the user picked in-app via
-		// the GeneralsZH Setup app's folder browser (no adb needed) — it
-		// writes the chosen absolute path as plain text into
-		// <internal>/gamedata_path.txt before this activity ever starts.
-		// Falls back to <external>/GameData (the adb-push convention this
-		// port originally documented), then the external files dir itself.
+		// WARU Edition: mod launches use a separate, one-shot marker.
+		// The regular gamedata_path.txt remains unchanged.
 		bool didChdir = false;
 		if (internalPath != nullptr) {
 			char markerPath[1024];
+			char modMarkerPath[1024];
+			snprintf(modMarkerPath, sizeof(modMarkerPath), "%s/gamedata_mod_path.txt", internalPath);
 			snprintf(markerPath, sizeof(markerPath), "%s/gamedata_path.txt", internalPath);
-			FILE *marker = fopen(markerPath, "r");
+			FILE *marker = fopen(modMarkerPath, "r");
+			bool fromModMarker = marker != nullptr;
+			if (marker == nullptr) marker = fopen(markerPath, "r");
 			if (marker != nullptr) {
 				char customPath[900] = {0};
 				if (fgets(customPath, sizeof(customPath), marker) != nullptr) {
@@ -797,7 +797,8 @@ int main(int argc, char* argv[])
 					if (len > 0) {
 						if (chdir(customPath) == 0) {
 							didChdir = true;
-							fprintf(stderr, "INFO: Android working directory (Setup-selected): %s\n", customPath);
+							fprintf(stderr, "INFO: Android working directory (%s): %s\n",
+							        fromModMarker ? "Mod-selected" : "Setup-selected", customPath);
 						} else {
 							fprintf(stderr, "WARNING: Setup-selected game folder '%s' set but chdir failed: %s\n",
 							        customPath, strerror(errno));
@@ -805,6 +806,7 @@ int main(int argc, char* argv[])
 					}
 				}
 				fclose(marker);
+				if (fromModMarker) unlink(modMarkerPath);
 			}
 		}
 		if (!didChdir && externalPath != nullptr) {
