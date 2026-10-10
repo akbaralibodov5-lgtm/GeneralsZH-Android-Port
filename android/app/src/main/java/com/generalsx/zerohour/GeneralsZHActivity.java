@@ -59,6 +59,7 @@ import java.io.OutputStream;
 public class GeneralsZHActivity extends SDLActivity {
 
     private static final String TAG = "GeneralsZH";
+    static final String EXTRA_LAUNCH_MOD = "waru_launch_mod";
 
     // GeneralsX @feature Android port 23/09/2026 Launch options from the Replay check
     // screen (ReplayCheckActivity): play one replay, optionally fast-forwarded to a frame
@@ -284,10 +285,13 @@ public class GeneralsZHActivity extends SDLActivity {
         // lockstep with the Windows client. If the 60 Hz library is somehow missing
         // from the APK, fall back rather than fail to start.
         String engine = "main";
+        boolean launchMod = getIntent() != null && getIntent().getBooleanExtra(EXTRA_LAUNCH_MOD, false);
         if (SetupActivity.getSimHz(this) == SetupActivity.SIM_HZ_CROSSPLAY
                 && new java.io.File(getApplicationInfo().nativeLibraryDir, "libmain60.so").isFile()) {
             engine = "main60";
         }
+        Log.i(TAG, "Launch profile: " + (launchMod ? "MOD" : "RETAIL")
+            + ", simulation rate=" + SetupActivity.getSimHz(this) + " Hz");
         Log.i(TAG, "Loading engine library: lib" + engine + ".so");
         return new String[] {
             "SDL3",
@@ -362,10 +366,24 @@ public class GeneralsZHActivity extends SDLActivity {
 
         extractBundledRuntime();
 
-        String gamePath = getSavedGamePath();
-        boolean haveCustomPath = gamePath != null && SetupActivity.isValidGameFolder(new File(gamePath));
-        boolean haveLegacyPath = !haveCustomPath && isValidGameFolder(legacyGameDataDir());
+        boolean launchMod = getIntent() != null && getIntent().getBooleanExtra(EXTRA_LAUNCH_MOD, false);
+        String gamePath = launchMod
+            ? getSharedPreferences(SetupActivity.PREFS_NAME, MODE_PRIVATE).getString(SetupActivity.PREF_MOD_PATH, null)
+            : getSavedGamePath();
+        boolean haveCustomPath = launchMod
+            ? gamePath != null && new File(gamePath).isDirectory()
+            : gamePath != null && SetupActivity.isValidGameFolder(new File(gamePath));
+        File[] modArchives = launchMod && haveCustomPath
+            ? new File(gamePath).listFiles((parent, name) -> name.toLowerCase(java.util.Locale.ROOT).endsWith(".big")) : null;
+        boolean haveLegacyPath = !launchMod && !haveCustomPath && isValidGameFolder(legacyGameDataDir());
 
+        if (launchMod && (gamePath == null || !haveCustomPath || modArchives == null || modArchives.length == 0)) {
+            Log.e(TAG, "Mod launch requested but its folder is unavailable");
+            new File(getFilesDir(), "gamedata_mod_path.txt").delete();
+            startActivity(new Intent(this, SetupActivity.class));
+            finish();
+            return;
+        }
         if (!haveCustomPath && !haveLegacyPath) {
             // Never touch libmain.so on a misconfigured install: redirect to
             // Setup instead of letting SDLActivity load the native library
@@ -394,7 +412,7 @@ public class GeneralsZHActivity extends SDLActivity {
         // already had a custom path saved before this fix shipped would
         // otherwise keep missing fonts/ forever (every button renders with no
         // text; see SetupActivity.copyBundledRuntimeIfMissing for why).
-        if (haveCustomPath) {
+        if (haveCustomPath && !launchMod) {
             File bundledRoot = getExternalFilesDir(null);
             if (bundledRoot != null) {
                 SetupActivity.copyBundledRuntimeIfMissing(bundledRoot, gamePath);
