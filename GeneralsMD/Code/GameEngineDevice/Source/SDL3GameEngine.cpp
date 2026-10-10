@@ -59,6 +59,9 @@
 #include "GXTrace.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
+#if defined(__ANDROID__)
+#include <jni.h>
+#endif
 
 #include <cstdio>
 #include <cstdlib>
@@ -74,6 +77,12 @@
 // Forward-declared like W3DProjectedShadow.cpp does: d3d8gles.h is not on this target's include
 // path, and everything links into the same libmain.so. See gles_pipeline.cpp.
 extern "C" void d3d8gles_SetPresentUncapped(bool uncapped);
+#endif
+
+#include "SDL3Device/GameClient/TouchInput.h"
+#include "SDL3Device/GameClient/AndroidTextEditor.h"
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
 #endif
 
 #if defined(__ANDROID__)
@@ -94,11 +103,6 @@ Java_com_generalsx_zerohour_GeneralsZHActivity_nativeVirtualKey(
 	event.key.timestamp = SDL_GetTicksNS();
 	SDL_PushEvent(&event);
 }
-#endif
-#include "SDL3Device/GameClient/TouchInput.h"
-#include "SDL3Device/GameClient/AndroidTextEditor.h"
-#if defined(__APPLE__)
-#include <TargetConditionals.h>
 #endif
 
 // GeneralsX @build Android port 06/07/2026 Shared guard for the touch-first
