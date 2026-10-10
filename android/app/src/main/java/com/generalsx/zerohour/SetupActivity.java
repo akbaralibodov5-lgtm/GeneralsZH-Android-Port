@@ -102,7 +102,7 @@ public class SetupActivity extends Activity {
 
     static int getSimHz(android.content.Context ctx) {
         int hz = ctx.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-            .getInt(PREF_SIM_HZ, SIM_HZ_RETAIL);
+            .getInt(PREF_SIM_HZ, SIM_HZ_CROSSPLAY);
         return hz == SIM_HZ_CROSSPLAY ? SIM_HZ_CROSSPLAY : SIM_HZ_RETAIL;
     }
 
@@ -146,6 +146,17 @@ public class SetupActivity extends Activity {
         // Setup -> Launch rotation race that used to be sidestepped by never
         // rotating Setup at all.
         super.onCreate(savedInstanceState);
+        // WARU 1.4.5: migrate existing installs to the PC-compatible 60 Hz
+        // simulation once, while preserving the user's choice on later launches.
+        android.content.SharedPreferences versionPrefs =
+            getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        int seenVersion = versionPrefs.getInt("launcher_version_code_seen", 0);
+        if (seenVersion < 10405) {
+            versionPrefs.edit()
+                .putInt(PREF_SIM_HZ, SIM_HZ_CROSSPLAY)
+                .putInt("launcher_version_code_seen", 10405)
+                .apply();
+        }
         setTitle(R.string.setup_window_title);
 
         // GeneralsX @feature Android port launcher-ui-2026 08/09/2026 Which
