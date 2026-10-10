@@ -322,6 +322,20 @@ public class GeneralsZHActivity extends SDLActivity {
     }
 
     @Override
+    @Override
+    protected void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        // The SDL layout exists by this point; put the keyboard controls above the game surface.
+        if (mLayout != null && virtualKeyboardOverlay == null) {
+            virtualKeyboardOverlay = new VirtualKeyboardOverlay(this, mLayout,
+                new VirtualKeyboardOverlay.KeySink() {
+                    @Override public void onKey(int scanCode, boolean down) {
+                        nativeVirtualKey(scanCode, down);
+                    }
+                });
+        }
+    }
+
     protected void onCreate(Bundle savedInstanceState) {
         // TheSuperHackers @bugfix Android port 07/07/2026 Belt-and-suspenders
         // on top of the manifest's screenOrientation="landscape": a real
