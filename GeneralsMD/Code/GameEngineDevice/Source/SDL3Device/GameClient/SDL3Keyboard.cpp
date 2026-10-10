@@ -301,7 +301,7 @@ KeyVal SDL3Keyboard::translateScanCodeToKeyVal(SDL_Scancode scan)
 
         // Printable punctuation keys exposed by the virtual PC keyboard.
         case SDL_SCANCODE_MINUS: return KEY_MINUS;
-        case SDL_SCANCODE_EQUALS: return KEY_EQUALS;
+        case SDL_SCANCODE_EQUALS: return KEY_EQUAL;
         case SDL_SCANCODE_LEFTBRACKET: return KEY_LBRACKET;
         case SDL_SCANCODE_RIGHTBRACKET: return KEY_RBRACKET;
         case SDL_SCANCODE_SEMICOLON: return KEY_SEMICOLON;
