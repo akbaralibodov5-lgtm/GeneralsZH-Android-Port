@@ -592,32 +592,9 @@ jobs:
       # `actions: write` above is what authorizes the delete call itself.
       # Best-effort throughout: a delete failing (already expired, already
       # deleted by a concurrent run) must not fail the build.
-      - name: Delete superseded artifacts across all branches
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          declare -A latest_run
-
-          while IFS=$'\t' read -r branch run_id; do
-            [ -z "${branch}" ] && continue
-            if [ -z "${latest_run[$branch]:-}" ] || [ "${run_id}" -gt "${latest_run[$branch]}" ]; then
-              latest_run[$branch]="${run_id}"
-            fi
-          done < <(gh api "repos/${{ github.repository }}/actions/artifacts" --paginate \
-            --jq '.artifacts[] | [(.workflow_run.head_branch // ""), .workflow_run.id] | @tsv')
-
-          gh api "repos/${{ github.repository }}/actions/artifacts" --paginate \
-            --jq '.artifacts[] | [(.workflow_run.head_branch // ""), .workflow_run.id, .id] | @tsv' \
-          | while IFS=$'\t' read -r branch run_id artifact_id; do
-              [ -z "${branch}" ] && continue
-              if [ "${run_id}" != "${latest_run[$branch]:-}" ]; then
-                echo "Deleting old artifact ${artifact_id} (branch ${branch}, run ${run_id}, latest for that branch is ${latest_run[$branch]})"
-                gh api -X DELETE "repos/${{ github.repository }}/actions/artifacts/${artifact_id}" || true
-              fi
-            done
-
+      # Keep artifacts from this run. The former cross-workflow cleanup
+      # compared unrelated workflow run IDs and could delete this APK when a
+      # later CI workflow completed on the same branch.
       # Save caches even when the job failed (see the restore steps above for
       # why plain actions/cache can't do this). Guard each save so a run that
       # restored an exact-key hit doesn't fail trying to re-save it.
