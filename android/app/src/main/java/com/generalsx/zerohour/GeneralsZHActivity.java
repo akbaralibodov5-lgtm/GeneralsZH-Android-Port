@@ -38,15 +38,6 @@ import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.view.Display;
 import android.view.KeyEvent;
-import android.graphics.drawable.GradientDrawable;
-import android.view.Gravity;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.RelativeLayout;
-import android.widget.TextView;
 import android.view.DisplayCutout;
 import android.view.RoundedCorner;
 import android.view.WindowInsets;
@@ -111,106 +102,9 @@ public class GeneralsZHActivity extends SDLActivity {
     // back through the two native methods, which only queue for the engine's next frame.
     private TextEditorBar textEditorBar;
 
-    // WARU Edition: in-game transparent PC-style keyboard overlay. Every virtual
-    // press is sent through JNI into SDL3's event queue (not merely drawn on screen).
-    private LinearLayout virtualKeyboardPanel;
-    private Button virtualKeyboardToggle;
-    private boolean virtualKeyboardVisible;
+    // Optional transparent PC-style keyboard overlay, initialized after SDL creates the layout.
+    private VirtualKeyboardOverlay virtualKeyboardOverlay;
     private static native void nativeVirtualKey(int scanCode, boolean down);
-
-    private static final class VirtualKey {
-        final String label;
-        final int scanCode;
-        VirtualKey(String label, int scanCode) { this.label = label; this.scanCode = scanCode; }
-    }
-
-    private static final VirtualKey[][] VIRTUAL_KEY_ROWS = new VirtualKey[][] {
-        {
-            new VirtualKey("ESC", 41), new VirtualKey("F1", 58), new VirtualKey("F2", 59),
-            new VirtualKey("F3", 60), new VirtualKey("F4", 61), new VirtualKey("F5", 62),
-            new VirtualKey("F6", 63), new VirtualKey("F7", 64), new VirtualKey("F8", 65),
-            new VirtualKey("F9", 66), new VirtualKey("F10", 67), new VirtualKey("F11", 68),
-            new VirtualKey("F12", 69)
-        },
-        {
-            new VirtualKey("1", 30), new VirtualKey("2", 31), new VirtualKey("3", 32),
-            new VirtualKey("4", 33), new VirtualKey("5", 34), new VirtualKey("6", 35),
-            new VirtualKey("7", 36), new VirtualKey("8", 37), new VirtualKey("9", 38),
-            new VirtualKey("0", 39), new VirtualKey("⌫", 42), new VirtualKey("↵", 40)
-        },
-        {
-            new VirtualKey("Q", 20), new VirtualKey("W", 26), new VirtualKey("E", 8),
-            new VirtualKey("R", 21), new VirtualKey("T", 23), new VirtualKey("Y", 28),
-            new VirtualKey("U", 24), new VirtualKey("I", 12), new VirtualKey("O", 18),
-            new VirtualKey("P", 19), new VirtualKey("[", 47), new VirtualKey("]", 48)
-        },
-        {
-            new VirtualKey("A", 4), new VirtualKey("S", 22), new VirtualKey("D", 7),
-            new VirtualKey("F", 9), new VirtualKey("G", 10), new VirtualKey("H", 11),
-            new VirtualKey("J", 13), new VirtualKey("K", 14), new VirtualKey("L", 15),
-            new VirtualKey(";", 51), new VirtualKey("'", 52), new VirtualKey("DEL", 76)
-        },
-        {
-            new VirtualKey("SHIFT", 225), new VirtualKey("Z", 29), new VirtualKey("X", 27),
-            new VirtualKey("C", 6), new VirtualKey("V", 25), new VirtualKey("B", 5),
-            new VirtualKey("N", 17), new VirtualKey("M", 16), new VirtualKey(",", 54),
-            new VirtualKey(".", 55), new VirtualKey("↑", 82), new VirtualKey("SHIFT", 229)
-        },
-        {
-            new VirtualKey("CTRL", 224), new VirtualKey("ALT", 226), new VirtualKey("←", 80),
-            new VirtualKey("↓", 81), new VirtualKey("→", 79), new VirtualKey("SPACE", 44),
-            new VirtualKey("ALT", 230), new VirtualKey("CTRL", 228), new VirtualKey("TAB", 43),
-            new VirtualKey("ENTER", 40)
-        }
-    };
-
-    private static native void nativeTextEditorChanged(String text, int serial);
-    private static native void nativeTextEditorDone(String text, boolean submit, int serial);
-
-    @SuppressWarnings("unused") // called via JNI
-    public void showTextEditor(final String text, final int maxLength, final int flags, final int serial) {
-        runOnUiThread(() -> {
-            if (mLayout == null) {
-                return;
-            }
-            if (textEditorBar == null) {
-                textEditorBar = new TextEditorBar(this, mLayout, new TextEditorBar.Listener() {
-                    @Override public void onChanged(String changed, int changedSerial) {
-                        nativeTextEditorChanged(changed, changedSerial);
-                    }
-                    @Override public void onDone(String finished, boolean submit, int doneSerial) {
-                        nativeTextEditorDone(finished, submit, doneSerial);
-                    }
-                }, () -> {
-                    if (mSurface != null) {
-                        mSurface.requestFocus();
-                    }
-                });
-            }
-            textEditorBar.show(text, maxLength, flags, serial);
-        });
-    }
-
-    @SuppressWarnings("unused") // called via JNI
-    public void hideTextEditor() {
-        runOnUiThread(() -> {
-            if (textEditorBar != null) {
-                textEditorBar.hide();
-            }
-        });
-    }
-
-    @Override
-    protected void onPostCreate(Bundle savedInstanceState) {
-        super.onPostCreate(savedInstanceState);
-        if (mLayout != null) {
-            virtualKeyboardOverlay = new VirtualKeyboardOverlay(this, mLayout, this::sendVirtualKey);
-        }
-    }
-
-    private void sendVirtualKey(int scanCode, boolean down) {
-        nativeVirtualKey(scanCode, down);
-    }
 
     // Back closes the bar (keeping the text) instead of reaching the game. While the keyboard
     // is up, the keyboard takes the first Back itself.
