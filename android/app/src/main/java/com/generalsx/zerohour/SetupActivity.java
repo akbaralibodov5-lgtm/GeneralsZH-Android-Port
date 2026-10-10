@@ -78,6 +78,11 @@ public class SetupActivity extends Activity {
 
     static final String PREFS_NAME = "generalszh_setup";
     static final String PREF_GAME_PATH = "game_path";
+    // WARU Edition isolated optional mod profile.
+    static final String PREF_MOD_PATH = "mod_path";
+    private static final String MOD_MARKER_NAME = "gamedata_mod_path.txt";
+    private static final int REQUEST_PICK_MOD_FOLDER = 1004;
+    private boolean pendingModLaunchAfterRotation = false;
 
     // GeneralsX @feature Android port 15/09/2026 Simulation tick rate.
     //
@@ -203,6 +208,7 @@ public class SetupActivity extends Activity {
         addPlainButton(root, getString(R.string.setup_button_select_game_folder), this::onSelectGameFolder);
         addPlainButton(root, getString(R.string.setup_button_view_logs), this::onViewLogs);
         addPlainButton(root, getString(R.string.setup_button_launch_game), this::onLaunchGame);
+        addPlainButton(root, getString(R.string.setup_button_launch_mod), this::onLaunchMod);
         addPlainButton(root, getString(R.string.setup_button_clear_game_folder), this::onClearGameFolder);
     }
 
@@ -429,9 +435,18 @@ public class SetupActivity extends Activity {
     // ------------------------------------------------------------ Home page
 
     private void buildHomeSection(LinearLayout page) {
-        // The one thing this app exists to do, as the first thing on it.
-        UiKit.button(page, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_play,
+        // WARU Edition hero: a modern command-center opening with two play modes.
+        LinearLayout hero = UiKit.card(page);
+        UiKit.sectionHeader(hero, R.drawable.ic_gzh_play, getString(R.string.setup_hero_kicker), false);
+        TextView heroTitle = UiKit.title(hero, getString(R.string.setup_hero_title));
+        heroTitle.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 27);
+        heroTitle.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD));
+        TextView heroBody = UiKit.supporting(hero, getString(R.string.setup_hero_subtitle));
+        heroBody.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14);
+        UiKit.button(hero, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_play,
             getString(R.string.setup_button_launch_game), this::onLaunchGame);
+        UiKit.button(hero, UiKit.BTN_OUTLINE, R.drawable.ic_gzh_wrench,
+            getString(R.string.setup_button_launch_mod), this::onLaunchMod);
 
         LinearLayout folder = UiKit.card(page);
         UiKit.sectionHeader(folder, R.drawable.ic_gzh_folder,
@@ -442,6 +457,13 @@ public class SetupActivity extends Activity {
 
         UiKit.button(folder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
             getString(R.string.setup_button_select_game_folder), this::onSelectGameFolder);
+        TextView modPathStatus = UiKit.body(folder, null);
+        modPathStatus.setText(modPathSummary());
+        modPathStatus.setTextIsSelectable(true);
+        UiKit.button(folder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
+            getString(R.string.setup_button_select_mod_folder), this::onSelectModFolder);
+        UiKit.button(folder, UiKit.BTN_TONAL, R.drawable.ic_gzh_broom,
+            getString(R.string.setup_button_clear_mod_folder), this::onClearModFolder);
         UiKit.button(folder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
             getString(R.string.setup_button_select_base_generals), this::onSelectBaseGeneralsFolder);
         UiKit.button(folder, UiKit.BTN_DANGER, R.drawable.ic_gzh_broom,
@@ -3060,6 +3082,53 @@ public class SetupActivity extends Activity {
         startActivityForResult(new Intent(this, FolderPickerActivity.class), REQUEST_PICK_BASE_GENERALS);
     }
 
+    private String getSavedModPath() {
+        return getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(PREF_MOD_PATH, null);
+    }
+
+    private String modPathSummary() {
+        String path = getSavedModPath();
+        if (path == null) return getString(R.string.setup_mod_path_not_set);
+        File dir = new File(path);
+        if (!dir.isDirectory()) return getString(R.string.setup_mod_path_invalid, path);
+        File[] archives = dir.listFiles((parent, name) -> name.toLowerCase(java.util.Locale.ROOT).endsWith(".big"));
+        return getString(R.string.setup_mod_path_set, path, archives == null ? 0 : archives.length);
+    }
+
+    private void onSelectModFolder() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+            Toast.makeText(this, R.string.setup_toast_grant_all_files, Toast.LENGTH_LONG).show();
+            try {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                intent.setData(Uri.parse("package:" + getPackageName()));
+                startActivity(intent);
+            } catch (Exception e) {
+                startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+            }
+            return;
+        }
+        startActivityForResult(new Intent(this, FolderPickerActivity.class), REQUEST_PICK_MOD_FOLDER);
+    }
+
+    private void onClearModFolder() {
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().remove(PREF_MOD_PATH).apply();
+        new File(getFilesDir(), MOD_MARKER_NAME).delete();
+        Toast.makeText(this, R.string.setup_toast_mod_folder_cleared, Toast.LENGTH_SHORT).show();
+        showTab(TAB_HOME);
+    }
+
+    private boolean saveModPath(String path) {
+        File dir = new File(path);
+        File[] archives = dir.isDirectory() ? dir.listFiles((parent, name) -> name.toLowerCase(java.util.Locale.ROOT).endsWith(".big")) : null;
+        if (archives == null || archives.length == 0) {
+            Toast.makeText(this, R.string.setup_mod_path_no_archives, Toast.LENGTH_LONG).show();
+            return false;
+        }
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putString(PREF_MOD_PATH, dir.getAbsolutePath()).apply();
+        Toast.makeText(this, R.string.setup_toast_mod_folder_saved, Toast.LENGTH_LONG).show();
+        return true;
+    }
+
     private void onClearBaseGeneralsFolder() {
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().remove(PREF_BASE_GENERALS_PATH).apply();
         new File(getFilesDir(), "generals_base_path.txt").delete();
@@ -3147,6 +3216,9 @@ public class SetupActivity extends Activity {
                     }
                 }
             }
+        } else if (requestCode == REQUEST_PICK_MOD_FOLDER && resultCode == Activity.RESULT_OK && data != null) {
+            String path = data.getStringExtra(FolderPickerActivity.EXTRA_SELECTED_PATH);
+            if (path != null && saveModPath(path)) showTab(TAB_HOME);
         } else if (requestCode == REQUEST_PICK_BASE_GENERALS && resultCode == Activity.RESULT_OK && data != null) {
             String path = data.getStringExtra(FolderPickerActivity.EXTRA_SELECTED_PATH);
             if (path != null) {
@@ -3360,21 +3432,62 @@ public class SetupActivity extends Activity {
     // rotated the phone), there's nothing to wait for.
     private boolean pendingLaunchAfterRotation = false;
 
-    private void onLaunchGame() {
-        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            startActivity(new Intent(this, GeneralsZHActivity.class));
+    private void onLaunchGame() { launchGame(false); }
+
+    private void onLaunchMod() {
+        String path = getSavedModPath();
+        File dir = path == null ? null : new File(path);
+        File[] archives = dir != null && dir.isDirectory()
+            ? dir.listFiles((parent, name) -> name.toLowerCase(java.util.Locale.ROOT).endsWith(".big")) : null;
+        if (archives == null || archives.length == 0) {
+            new android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.setup_mod_folder_required_title)
+                .setMessage(R.string.setup_mod_folder_required_message)
+                .setNegativeButton(R.string.common_cancel, null)
+                .setPositiveButton(R.string.setup_button_select_mod_folder, (dialog, which) -> onSelectModFolder())
+                .show();
             return;
         }
-        pendingLaunchAfterRotation = true;
+        launchGame(true);
+    }
+
+    private void launchGame(boolean mod) {
+        if (mod) {
+            String path = getSavedModPath();
+            try (java.io.FileWriter w = new java.io.FileWriter(new File(getFilesDir(), MOD_MARKER_NAME), false)) {
+                w.write(new File(path).getCanonicalPath());
+                w.write("\n");
+            } catch (java.io.IOException e) {
+                Toast.makeText(this, getString(R.string.setup_toast_marker_save_failed, e.getMessage()), Toast.LENGTH_LONG).show();
+                return;
+            }
+        } else {
+            new File(getFilesDir(), MOD_MARKER_NAME).delete();
+        }
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            startRequestedGameActivity(mod);
+            return;
+        }
+        pendingLaunchAfterRotation = !mod;
+        pendingModLaunchAfterRotation = mod;
         setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+    }
+
+    private void startRequestedGameActivity(boolean mod) {
+        Intent intent = new Intent(this, GeneralsZHActivity.class);
+        intent.putExtra(GeneralsZHActivity.EXTRA_LAUNCH_MOD, mod);
+        startActivity(intent);
     }
 
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        if (pendingLaunchAfterRotation && newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+        if ((pendingLaunchAfterRotation || pendingModLaunchAfterRotation)
+                && newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            boolean mod = pendingModLaunchAfterRotation;
             pendingLaunchAfterRotation = false;
-            startActivity(new Intent(this, GeneralsZHActivity.class));
+            pendingModLaunchAfterRotation = false;
+            startRequestedGameActivity(mod);
         }
     }
 
