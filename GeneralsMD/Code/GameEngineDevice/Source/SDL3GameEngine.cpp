@@ -85,6 +85,19 @@ extern "C" void d3d8gles_SetPresentUncapped(bool uncapped);
 #include <TargetConditionals.h>
 #endif
 
+
+
+// GeneralsX @build Android port 06/07/2026 Shared guard for the touch-first
+// mobile platforms. The gesture translator and app-lifecycle render gate below
+// were built for iOS and apply 1:1 on Android: both OSes deliver SDL finger
+// events, both suspend the process when the app leaves the foreground, and on
+// both the window surface is owned by the OS while backgrounded (CAMetalLayer
+// on iOS, ANativeWindow on Android) — touching the GPU in that state kills the
+// app on resume.
+#if (defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE) || defined(__ANDROID__)
+#define SAGE_MOBILE_PLATFORM 1
+#endif
+
 #if defined(__ANDROID__)
 #include <jni.h>
 
@@ -105,16 +118,6 @@ Java_com_generalsx_zerohour_GeneralsZHActivity_nativeVirtualKey(
 }
 #endif
 
-// GeneralsX @build Android port 06/07/2026 Shared guard for the touch-first
-// mobile platforms. The gesture translator and app-lifecycle render gate below
-// were built for iOS and apply 1:1 on Android: both OSes deliver SDL finger
-// events, both suspend the process when the app leaves the foreground, and on
-// both the window surface is owned by the OS while backgrounded (CAMetalLayer
-// on iOS, ANativeWindow on Android) — touching the GPU in that state kills the
-// app on resume.
-#if (defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE) || defined(__ANDROID__)
-#define SAGE_MOBILE_PLATFORM 1
-#endif
 
 // Extern globals for input devices (set by GameClient)
 extern Mouse *TheMouse;
