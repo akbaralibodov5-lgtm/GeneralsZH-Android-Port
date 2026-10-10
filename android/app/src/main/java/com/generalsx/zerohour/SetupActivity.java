@@ -3046,6 +3046,7 @@ public class SetupActivity extends Activity {
     }
 
     private static final int REQUEST_LEGACY_STORAGE_PERMISSION = 1003;
+    private boolean pendingLegacyModFolderPermission = false;
 
     private void onSelectGameFolder() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -3096,15 +3097,24 @@ public class SetupActivity extends Activity {
     }
 
     private void onSelectModFolder() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
-            Toast.makeText(this, R.string.setup_toast_grant_all_files, Toast.LENGTH_LONG).show();
-            try {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-                intent.setData(Uri.parse("package:" + getPackageName()));
-                startActivity(intent);
-            } catch (Exception e) {
-                startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                Toast.makeText(this, R.string.setup_toast_grant_all_files, Toast.LENGTH_LONG).show();
+                try {
+                    Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    startActivity(intent);
+                } catch (Exception e) {
+                    startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+                }
+                return;
             }
+        } else if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            pendingLegacyModFolderPermission = true;
+            ActivityCompat.requestPermissions(this,
+                new String[] { Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE },
+                REQUEST_LEGACY_STORAGE_PERMISSION);
             return;
         }
         startActivityForResult(new Intent(this, FolderPickerActivity.class), REQUEST_PICK_MOD_FOLDER);
@@ -3166,7 +3176,12 @@ public class SetupActivity extends Activity {
         if (requestCode == REQUEST_LEGACY_STORAGE_PERMISSION) {
             boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
             if (granted) {
-                startActivityForResult(new Intent(this, FolderPickerActivity.class), 1001);
+                if (pendingLegacyModFolderPermission) {
+                    pendingLegacyModFolderPermission = false;
+                    startActivityForResult(new Intent(this, FolderPickerActivity.class), REQUEST_PICK_MOD_FOLDER);
+                } else {
+                    startActivityForResult(new Intent(this, FolderPickerActivity.class), 1001);
+                }
             } else if (!ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_EXTERNAL_STORAGE)) {
                 // GeneralsX @bugfix Android port 24/09/2026 Issue #22: after "Don't ask again" the
                 // system denies without showing a prompt, so retrying from here can never work.
