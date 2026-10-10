@@ -353,7 +353,6 @@ public class GeneralsZHActivity extends SDLActivity {
     }
 
     @Override
-    @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
         // The SDL layout exists by this point; put the keyboard controls above the game surface.
