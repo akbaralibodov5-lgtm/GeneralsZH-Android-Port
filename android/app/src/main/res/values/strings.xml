@@ -368,4 +368,5 @@
     <string name="setup_toast_mod_folder_cleared">Mod folder setting cleared.</string>
     <string name="setup_mod_folder_required_title">Choose a mod folder</string>
     <string name="setup_mod_folder_required_message">Choose the separate mod data folder first. It is used only when Launch Mod is pressed.</string>
+    <string name="setup_card_mod_files">Mod Files</string>
 </resources>
