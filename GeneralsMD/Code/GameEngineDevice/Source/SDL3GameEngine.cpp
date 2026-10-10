@@ -60,6 +60,16 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
+#include "GameClient/LookAtXlat.h"
+#include "Common/AudioAffect.h"
+#include "Common/GameAudio.h"
+#include "GameLogic/GameLogic.h"
+#include "Common/FramePacer.h"
+
 #if defined(__ANDROID__)
 #include <jni.h>
 
@@ -79,15 +89,6 @@ Java_com_generalsx_zerohour_GeneralsZHActivity_nativeVirtualKey(
 	SDL_PushEvent(&event);
 }
 #endif
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-
-#include "GameClient/LookAtXlat.h"
-#include "Common/AudioAffect.h"
-#include "Common/GameAudio.h"
-#include "GameLogic/GameLogic.h"
-#include "Common/FramePacer.h"
 #if defined(__ANDROID__)
 // Forward-declared like W3DProjectedShadow.cpp does: d3d8gles.h is not on this target's include
 // path, and everything links into the same libmain.so. See gles_pipeline.cpp.
