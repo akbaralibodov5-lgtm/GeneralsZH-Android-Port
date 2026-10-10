@@ -108,7 +108,7 @@ Java_com_generalsx_zerohour_GeneralsZHActivity_nativeVirtualKey(
 {
 	SDL_Event event{};
 	event.type = down == JNI_TRUE ? SDL_EVENT_KEY_DOWN : SDL_EVENT_KEY_UP;
-	event.key.type = event.type;
+	event.key.type = down == JNI_TRUE ? SDL_EVENT_KEY_DOWN : SDL_EVENT_KEY_UP;
 	event.key.scancode = static_cast<SDL_Scancode>(scanCode);
 	event.key.key = SDL_GetKeyFromScancode(event.key.scancode, SDL_KMOD_NONE, false);
 	event.key.down = (down == JNI_TRUE);
