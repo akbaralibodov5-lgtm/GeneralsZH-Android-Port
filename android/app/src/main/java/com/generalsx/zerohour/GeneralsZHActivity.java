@@ -355,14 +355,19 @@ public class GeneralsZHActivity extends SDLActivity {
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
-        // The SDL layout exists by this point; put the keyboard controls above the game surface.
-        if (mLayout != null && virtualKeyboardOverlay == null) {
-            virtualKeyboardOverlay = new VirtualKeyboardOverlay(this, mLayout,
-                new VirtualKeyboardOverlay.KeySink() {
-                    @Override public void onKey(int scanCode, boolean down) {
-                        nativeVirtualKey(scanCode, down);
-                    }
-                });
+        // SDLActivity's layout is attached during onCreate. Add the overlay on the UI thread
+        // after that layout exists; post() also handles SDL versions attaching it slightly later.
+        if (mLayout != null) {
+            mLayout.post(() -> {
+                if (virtualKeyboardOverlay == null && mLayout != null) {
+                    virtualKeyboardOverlay = new VirtualKeyboardOverlay(this, mLayout,
+                        new VirtualKeyboardOverlay.KeySink() {
+                            @Override public void onKey(int scanCode, boolean down) {
+                                nativeVirtualKey(scanCode, down);
+                            }
+                        });
+                }
+            });
         }
     }
 
