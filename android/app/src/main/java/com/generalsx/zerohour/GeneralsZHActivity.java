@@ -46,6 +46,15 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
+import android.graphics.drawable.GradientDrawable;
+import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.view.DisplayCutout;
 import android.view.RoundedCorner;
 import android.view.WindowInsets;
@@ -203,10 +212,8 @@ public class GeneralsZHActivity extends SDLActivity {
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
-        // Wait until SDLActivity has attached its game surface and root layout.
-        if (mLayout != null) {
-            installVirtualKeyboard();
-        }
+        // SDLActivity installs mLayout during onCreate; attach our overlay immediately afterward.
+        installVirtualKeyboard();
     }
 
     private void installVirtualKeyboard() {
