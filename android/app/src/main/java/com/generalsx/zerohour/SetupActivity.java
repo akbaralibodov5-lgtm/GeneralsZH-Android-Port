@@ -446,7 +446,7 @@ public class SetupActivity extends Activity {
     // ------------------------------------------------------------ Home page
 
     private void buildHomeSection(LinearLayout page) {
-        // WARU Edition hero: a modern command-center opening with two play modes.
+        // WARU Edition hero: light blue command-center layout matching the reference.
         LinearLayout hero = UiKit.card(page);
         UiKit.sectionHeader(hero, R.drawable.ic_gzh_play, getString(R.string.setup_hero_kicker), false);
         TextView heroTitle = UiKit.body(hero, getString(R.string.setup_hero_title));
@@ -456,30 +456,16 @@ public class SetupActivity extends Activity {
         heroBody.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14);
         UiKit.button(hero, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_play,
             getString(R.string.setup_button_launch_game), this::onLaunchGame);
-        UiKit.button(hero, UiKit.BTN_OUTLINE, R.drawable.ic_gzh_wrench,
+        UiKit.button(hero, UiKit.BTN_TONAL, R.drawable.ic_gzh_play,
             getString(R.string.setup_button_launch_mod), this::onLaunchMod);
 
         LinearLayout folder = UiKit.card(page);
         UiKit.sectionHeader(folder, R.drawable.ic_gzh_folder,
             getString(R.string.setup_card_game_folder), false);
-
         statusText = UiKit.body(folder, null);
         statusText.setTextIsSelectable(true);
-
         UiKit.button(folder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
             getString(R.string.setup_button_select_game_folder), this::onSelectGameFolder);
-        if (getSavedModPath() != null) {
-            TextView modPathStatus = UiKit.body(folder, modPathSummary());
-            modPathStatus.setTextIsSelectable(true);
-        } else {
-            UiKit.supporting(folder, modPathSummary());
-        }
-        UiKit.button(folder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
-            getString(R.string.setup_button_select_mod_folder), this::onSelectModFolder);
-        if (getSavedModPath() != null) {
-            UiKit.button(folder, UiKit.BTN_TONAL, R.drawable.ic_gzh_broom,
-                getString(R.string.setup_button_clear_mod_folder), this::onClearModFolder);
-        }
         UiKit.button(folder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
             getString(R.string.setup_button_select_base_generals), this::onSelectBaseGeneralsFolder);
         UiKit.button(folder, UiKit.BTN_DANGER, R.drawable.ic_gzh_broom,
@@ -489,10 +475,18 @@ public class SetupActivity extends Activity {
                 getString(R.string.setup_button_clear_base_generals), this::onClearBaseGeneralsFolder);
         }
 
-        // GeneralsX @bugfix Android port 01/08/2026 kept above the advanced
-        // settings -- signing into GeneralsOnline is a primary action most
-        // people want right after picking their game folder, not something to
-        // bury under settings most players never touch.
+        // Separate Mod Files card, matching the supplied launcher screenshot.
+        LinearLayout modFolder = UiKit.card(page);
+        UiKit.sectionHeader(modFolder, R.drawable.ic_gzh_folder,
+            getString(R.string.setup_card_mod_files), false);
+        UiKit.supporting(modFolder, modPathSummary());
+        UiKit.button(modFolder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
+            getString(R.string.setup_button_select_mod_folder), this::onSelectModFolder);
+        if (getSavedModPath() != null) {
+            UiKit.button(modFolder, UiKit.BTN_DANGER, R.drawable.ic_gzh_broom,
+                getString(R.string.setup_button_clear_mod_folder), this::onClearModFolder);
+        }
+
         buildGeneralsOnlineSection(page);
         buildUpdatesSection(page);
     }
