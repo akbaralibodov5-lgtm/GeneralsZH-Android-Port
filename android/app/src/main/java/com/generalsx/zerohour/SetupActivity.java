@@ -438,7 +438,7 @@ public class SetupActivity extends Activity {
         // WARU Edition hero: a modern command-center opening with two play modes.
         LinearLayout hero = UiKit.card(page);
         UiKit.sectionHeader(hero, R.drawable.ic_gzh_play, getString(R.string.setup_hero_kicker), false);
-        TextView heroTitle = UiKit.title(hero, getString(R.string.setup_hero_title));
+        TextView heroTitle = UiKit.body(hero, getString(R.string.setup_hero_title));
         heroTitle.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 27);
         heroTitle.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD));
         TextView heroBody = UiKit.supporting(hero, getString(R.string.setup_hero_subtitle));
