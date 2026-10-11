@@ -247,20 +247,42 @@ final class VirtualKeyboardOverlay {
             ViewGroup.LayoutParams.MATCH_PARENT, dp(130)));
 
         LinearLayout actions = new LinearLayout(activity);
-        actions.setGravity(Gravity.END);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        actions.setGravity(Gravity.CENTER_VERTICAL);
         Button all = settingsButton("All keys", "Enable all keys");
         all.setTextSize(10);
         all.setOnClickListener(v -> setAllKeys(true));
-        actions.addView(all);
+        actions.addView(all, new LinearLayout.LayoutParams(0, dp(34), 1f));
         Button none = settingsButton("Clear", "Disable all keys");
         none.setTextSize(10);
         none.setOnClickListener(v -> setAllKeys(false));
-        actions.addView(none);
+        LinearLayout.LayoutParams noneParams = new LinearLayout.LayoutParams(0, dp(34), 1f);
+        noneParams.setMargins(dp(4), 0, 0, 0);
+        actions.addView(none, noneParams);
         Button reset = settingsButton("Reset", "Restore default keyboard settings");
         reset.setTextSize(10);
         reset.setOnClickListener(v -> resetSettings());
-        actions.addView(reset);
-        settingsPanel.addView(actions);
+        LinearLayout.LayoutParams resetParams = new LinearLayout.LayoutParams(0, dp(34), 1f);
+        resetParams.setMargins(dp(4), 0, 0, 0);
+        actions.addView(reset, resetParams);
+        settingsPanel.addView(actions, new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
+        Button save = settingsButton("Save settings", "Save keyboard settings and close settings");
+        save.setTextSize(12);
+        save.setBackground(background(0xFF176B45, 0xFF65D6A0));
+        save.setOnClickListener(v -> {
+            // Individual edits are persisted immediately; this button confirms and closes settings.
+            prefs.edit().putInt(PREF_SCALE, scalePercent).apply();
+            settingsVisible = false;
+            settingsPanel.setVisibility(View.GONE);
+            settingsButton.setText("⚙");
+            Toast.makeText(activity, "Keyboard settings saved", Toast.LENGTH_SHORT).show();
+        });
+        LinearLayout.LayoutParams saveParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(42));
+        saveParams.setMargins(0, dp(5), 0, 0);
+        settingsPanel.addView(save, saveParams);
     }
 
     private Button settingsButton(String text, String description) {
