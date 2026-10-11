@@ -105,12 +105,10 @@ public class GeneralsZHActivity extends SDLActivity {
     private static native void nativeTextEditorChanged(String text, int serial);
     private static native void nativeTextEditorDone(String text, boolean submit, int serial);
 
-    @SuppressWarnings("unused") // called via JNI
+    @SuppressWarnings("unused")
     public void showTextEditor(final String text, final int maxLength, final int flags, final int serial) {
         runOnUiThread(() -> {
-            if (mLayout == null) {
-                return;
-            }
+            if (mLayout == null) return;
             if (textEditorBar == null) {
                 textEditorBar = new TextEditorBar(this, mLayout, new TextEditorBar.Listener() {
                     @Override public void onChanged(String changed, int changedSerial) {
@@ -120,23 +118,24 @@ public class GeneralsZHActivity extends SDLActivity {
                         nativeTextEditorDone(finished, submit, doneSerial);
                     }
                 }, () -> {
-                    if (mSurface != null) {
-                        mSurface.requestFocus();
-                    }
+                    if (mSurface != null) mSurface.requestFocus();
                 });
             }
             textEditorBar.show(text, maxLength, flags, serial);
         });
     }
 
-    @SuppressWarnings("unused") // called via JNI
+    @SuppressWarnings("unused")
     public void hideTextEditor() {
         runOnUiThread(() -> {
-            if (textEditorBar != null) {
-                textEditorBar.hide();
-            }
+            if (textEditorBar != null) textEditorBar.hide();
         });
     }
+
+
+    // Optional transparent PC-style keyboard overlay, initialized after SDL creates the layout.
+    private VirtualKeyboardOverlay virtualKeyboardOverlay;
+    private static native void nativeVirtualKey(int scanCode, boolean down);
 
     // Back closes the bar (keeping the text) instead of reaching the game. While the keyboard
     // is up, the keyboard takes the first Back itself.
@@ -354,6 +353,24 @@ public class GeneralsZHActivity extends SDLActivity {
     }
 
     @Override
+    protected void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        // SDLActivity's layout is attached during onCreate. Add the overlay on the UI thread
+        // after that layout exists; post() also handles SDL versions attaching it slightly later.
+        if (mLayout != null) {
+            mLayout.post(() -> {
+                if (virtualKeyboardOverlay == null && mLayout != null) {
+                    virtualKeyboardOverlay = new VirtualKeyboardOverlay(this, mLayout,
+                        new VirtualKeyboardOverlay.KeySink() {
+                            @Override public void onKey(int scanCode, boolean down) {
+                                nativeVirtualKey(scanCode, down);
+                            }
+                        });
+                }
+            });
+        }
+    }
+
     protected void onCreate(Bundle savedInstanceState) {
         // TheSuperHackers @bugfix Android port 07/07/2026 Belt-and-suspenders
         // on top of the manifest's screenOrientation="landscape": a real
