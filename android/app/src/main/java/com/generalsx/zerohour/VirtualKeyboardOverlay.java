@@ -6,6 +6,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -78,6 +79,8 @@ final class VirtualKeyboardOverlay {
 
     private static final String PREFS = "generalszh_keyboard";
     private static final String PREF_SCALE = "scale_percent";
+    private static final String PREF_PANEL_X = "panel_x";
+    private static final String PREF_PANEL_Y = "panel_y";
     private static final String PREF_KEY_PREFIX = "show_key_";
     private static final int MIN_SCALE = 60;
     private static final int MAX_SCALE = 125;
@@ -96,6 +99,8 @@ final class VirtualKeyboardOverlay {
     private int scalePercent;
     private boolean visible;
     private boolean settingsVisible;
+    private int panelX = Integer.MIN_VALUE;
+    private int panelY = Integer.MIN_VALUE;
 
     VirtualKeyboardOverlay(Activity activity, ViewGroup parent, KeySink keySink) {
         this.activity = activity;
@@ -103,6 +108,8 @@ final class VirtualKeyboardOverlay {
         this.keySink = keySink;
         this.prefs = activity.getSharedPreferences(PREFS, Activity.MODE_PRIVATE);
         this.scalePercent = clamp(prefs.getInt(PREF_SCALE, DEFAULT_SCALE), MIN_SCALE, MAX_SCALE);
+        this.panelX = prefs.getInt(PREF_PANEL_X, Integer.MIN_VALUE);
+        this.panelY = prefs.getInt(PREF_PANEL_Y, Integer.MIN_VALUE);
         install();
     }
 
@@ -135,12 +142,13 @@ final class VirtualKeyboardOverlay {
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = new TextView(activity);
-        title.setText("WARU  •  PC KEYBOARD");
+        title.setText("WARU  •  PC KEYBOARD  ⋮⋮");
         title.setTextColor(0xFFDDEEFF);
         title.setTextSize(11);
         title.setGravity(Gravity.CENTER_VERTICAL);
         title.setPadding(dp(4), 0, dp(4), 0);
         header.addView(title, new LinearLayout.LayoutParams(0, dp(28), 1f));
+        installDragHandle(title);
 
         settingsButton = new Button(activity);
         settingsButton.setText("⚙");
@@ -180,11 +188,112 @@ final class VirtualKeyboardOverlay {
 
         RelativeLayout.LayoutParams panelParams = new RelativeLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        panelParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
+        applyPanelPosition(panelParams);
         panelParams.setMargins(dp(6), 0, dp(6), dp(8));
         panel.setVisibility(View.GONE);
         parent.addView(panel, panelParams);
         toggle.bringToFront();
+    }
+
+    /**
+     * Drag the entire keyboard by long-pressing the header title.
+     * A long press avoids accidental moves while tapping keyboard/settings controls.
+     */
+    private void installDragHandle(View handle) {
+        final int touchSlop = ViewConfiguration.get(activity).getScaledTouchSlop();
+        final int longPressTimeout = ViewConfiguration.getLongPressTimeout();
+        final android.os.Handler handler = new android.os.Handler(activity.getMainLooper());
+        final int[] startRaw = new int[2];
+        final int[] startPos = new int[2];
+        final boolean[] longPressed = new boolean[1];
+        final boolean[] moved = new boolean[1];
+        final Runnable[] longPressAction = new Runnable[1];
+
+        handle.setContentDescription("Long-press and drag to move the keyboard");
+        handle.setOnTouchListener((view, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN: {
+                    startRaw[0] = Math.round(event.getRawX());
+                    startRaw[1] = Math.round(event.getRawY());
+                    ViewGroup.LayoutParams rawParams = panel.getLayoutParams();
+                    if (rawParams instanceof RelativeLayout.LayoutParams) {
+                        RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) rawParams;
+                        int[] panelLoc = new int[2];
+                        panel.getLocationOnScreen(panelLoc);
+                        startPos[0] = panelLoc[0];
+                        startPos[1] = panelLoc[1];
+                    } else {
+                        startPos[0] = 0;
+                        startPos[1] = 0;
+                    }
+                    longPressed[0] = false;
+                    moved[0] = false;
+                    longPressAction[0] = () -> {
+                        longPressed[0] = true;
+                        Toast.makeText(activity, "Drag to move keyboard", Toast.LENGTH_SHORT).show();
+                    };
+                    handler.postDelayed(longPressAction[0], longPressTimeout);
+                    return true;
+                }
+                case MotionEvent.ACTION_MOVE: {
+                    int dx = Math.round(event.getRawX()) - startRaw[0];
+                    int dy = Math.round(event.getRawY()) - startRaw[1];
+                    if (!longPressed[0] && (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop)) {
+                        handler.removeCallbacks(longPressAction[0]);
+                        return true;
+                    }
+                    if (longPressed[0]) {
+                        moved[0] = true;
+                        movePanelTo(startPos[0] + dx, startPos[1] + dy);
+                    }
+                    return true;
+                }
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL: {
+                    handler.removeCallbacks(longPressAction[0]);
+                    if (longPressed[0] && moved[0]) {
+                        savePanelPosition();
+                    }
+                    return true;
+                }
+                default:
+                    return true;
+            }
+        });
+    }
+
+    private void applyPanelPosition(RelativeLayout.LayoutParams params) {
+        if (panelX == Integer.MIN_VALUE || panelY == Integer.MIN_VALUE) {
+            params.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
+            params.addRule(RelativeLayout.ALIGN_PARENT_START);
+        } else {
+            params.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM, 0);
+            params.addRule(RelativeLayout.ALIGN_PARENT_START, 0);
+            params.leftMargin = panelX;
+            params.topMargin = panelY;
+            params.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+        }
+    }
+
+    private void movePanelTo(int x, int y) {
+        if (panel == null || parent == null) return;
+        int maxX = Math.max(0, parent.getWidth() - panel.getWidth());
+        int maxY = Math.max(0, parent.getHeight() - panel.getHeight());
+        int clampedX = Math.max(0, Math.min(x, maxX));
+        int clampedY = Math.max(0, Math.min(y, maxY));
+        RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) panel.getLayoutParams();
+        params.removeRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
+        params.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+        params.removeRule(RelativeLayout.ALIGN_PARENT_START);
+        params.leftMargin = clampedX;
+        params.topMargin = clampedY;
+        panelX = clampedX;
+        panelY = clampedY;
+        panel.setLayoutParams(params);
+    }
+
+    private void savePanelPosition() {
+        prefs.edit().putInt(PREF_PANEL_X, panelX).putInt(PREF_PANEL_Y, panelY).apply();
     }
 
     private void buildSettingsPanel() {
@@ -327,12 +436,26 @@ final class VirtualKeyboardOverlay {
     }
 
     private void resetSettings() {
-        SharedPreferences.Editor editor = prefs.edit().remove(PREF_SCALE);
+        SharedPreferences.Editor editor = prefs.edit().remove(PREF_SCALE)
+            .remove(PREF_PANEL_X).remove(PREF_PANEL_Y);
         for (Key[] row : ROWS) {
             for (Key key : row) editor.remove(PREF_KEY_PREFIX + key.id);
         }
         editor.apply();
         scalePercent = DEFAULT_SCALE;
+        panelX = Integer.MIN_VALUE;
+        panelY = Integer.MIN_VALUE;
+        if (panel != null) {
+            RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) panel.getLayoutParams();
+            if (params != null) {
+                params.removeRule(RelativeLayout.ALIGN_PARENT_TOP);
+                params.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
+                params.addRule(RelativeLayout.ALIGN_PARENT_START);
+                params.leftMargin = 0;
+                params.topMargin = 0;
+                panel.setLayoutParams(params);
+            }
+        }
         updateSizeLabel();
         settingsPanel.removeAllViews();
         buildSettingsPanel();
