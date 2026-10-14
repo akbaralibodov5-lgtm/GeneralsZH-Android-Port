@@ -161,6 +161,10 @@ public class GeneralsZHActivity extends SDLActivity {
     @Override
     protected String[] getArguments() {
         java.util.ArrayList<String> args = new java.util.ArrayList<>();
+        // CommandLine::parseCommandLineForStartup/EngineInit starts at argv[1].
+        // SDL passes this array as argv, so slot 0 must be a program-name placeholder;
+        // otherwise -mod (and every other launcher argument) is silently skipped.
+        args.add("generalszh");
         String safeInsets = computeSafeInsetsArgument();
         if (safeInsets != null) {
             args.add("-gxSafeInsets");
@@ -197,6 +201,7 @@ public class GeneralsZHActivity extends SDLActivity {
             args.add("-gxCrcEveryFrame");
         }
         Log.i(TAG, "Replay check launch: " + args);
+        Log.i(TAG, "Native launch arguments: " + args);
         return args.toArray(new String[0]);
     }
 
