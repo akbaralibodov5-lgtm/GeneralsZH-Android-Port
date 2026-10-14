@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- The upstream GenLauncher mod catalogue is currently HTTP-only. Keep this
+         exception host-scoped instead of allowing cleartext traffic app-wide. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">gen.insave.ovh</domain>
+    </domain-config>
+</network-security-config>
