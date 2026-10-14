@@ -3715,9 +3715,7 @@ public class SetupActivity extends Activity {
     private void onLaunchMod() {
         String path = getSavedModPath();
         File dir = path == null ? null : new File(path);
-        File[] archives = dir != null && dir.isDirectory()
-            ? dir.listFiles((parent, name) -> name.toLowerCase(java.util.Locale.ROOT).endsWith(".big")) : null;
-        if (archives == null || archives.length == 0) {
+        if (!hasModArchives(dir)) {
             new android.app.AlertDialog.Builder(this)
                 .setTitle(R.string.setup_mod_folder_required_title)
                 .setMessage(R.string.setup_mod_folder_required_message)
@@ -3731,13 +3729,19 @@ public class SetupActivity extends Activity {
 
     private void launchGame(boolean mod) {
         if (mod) {
-            String path = getSavedModPath();
-            try (java.io.FileWriter w = new java.io.FileWriter(new File(getFilesDir(), MOD_MARKER_NAME), false)) {
-                w.write(new File(path).getCanonicalPath());
-                w.write("\n");
-            } catch (java.io.IOException e) {
-                Toast.makeText(this, getString(R.string.setup_toast_marker_save_failed, e.getMessage()), Toast.LENGTH_LONG).show();
-                return;
+            if (MOD_MODE_OVERLAY.equals(getSavedModMode())) {
+                // A partial catalogue mod overlays the selected game data using -mod.
+                // Do not switch the current working directory into the partial mod folder.
+                new File(getFilesDir(), MOD_MARKER_NAME).delete();
+            } else {
+                String path = getSavedModPath();
+                try (java.io.FileWriter w = new java.io.FileWriter(new File(getFilesDir(), MOD_MARKER_NAME), false)) {
+                    w.write(new File(path).getCanonicalPath());
+                    w.write("\n");
+                } catch (java.io.IOException e) {
+                    Toast.makeText(this, getString(R.string.setup_toast_marker_save_failed, e.getMessage()), Toast.LENGTH_LONG).show();
+                    return;
+                }
             }
         } else {
             new File(getFilesDir(), MOD_MARKER_NAME).delete();
