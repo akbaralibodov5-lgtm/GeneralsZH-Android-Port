@@ -527,6 +527,8 @@ public class SetupActivity extends Activity {
         modFolder.addView(modSelectionSpinner, new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         refreshModChoices();
+        UiKit.button(modFolder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
+            getString(R.string.setup_button_choose_installed_mod), this::showInstalledModPicker);
         UiKit.button(modFolder, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_download,
             getString(R.string.setup_button_download_mod), this::showModDownloadPicker);
         UiKit.button(modFolder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
@@ -3273,19 +3275,75 @@ public class SetupActivity extends Activity {
     }
 
     private boolean saveModPath(String path) {
-        File dir = new File(path);
-        File[] archives = dir.isDirectory() ? dir.listFiles((parent, name) -> name.toLowerCase(java.util.Locale.ROOT).endsWith(".big")) : null;
-        if (archives == null || archives.length == 0) {
+        File dir = path == null ? null : new File(path);
+        if (!hasModArchives(dir)) {
             Toast.makeText(this, R.string.setup_mod_path_no_archives, Toast.LENGTH_LONG).show();
             return false;
         }
+        String canonicalPath;
+        try {
+            canonicalPath = dir.getCanonicalPath();
+        } catch (java.io.IOException e) {
+            canonicalPath = dir.getAbsolutePath();
+        }
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
-            .putString(PREF_MOD_PATH, dir.getAbsolutePath())
+            .putString(PREF_MOD_PATH, canonicalPath)
             .putString(PREF_MOD_MODE, MOD_MODE_STANDALONE)
             .apply();
         refreshModChoices();
         Toast.makeText(this, R.string.setup_toast_mod_folder_saved, Toast.LENGTH_LONG).show();
         return true;
+    }
+
+    /**
+     * A clear, explicit chooser for already downloaded/imported mods.
+     * The spinner remains available for quick selection; this button is easier to discover.
+     */
+    private void showInstalledModPicker() {
+        refreshModChoices();
+        if (modChoices.size() <= 1) {
+            new android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.setup_mod_select_picker_title)
+                .setMessage(R.string.setup_mod_no_installed)
+                .setPositiveButton(R.string.setup_button_download_mod,
+                    (dialog, which) -> showModDownloadPicker())
+                .setNegativeButton(R.string.common_cancel, null)
+                .show();
+            return;
+        }
+
+        String[] labels = new String[modChoices.size() - 1];
+        for (int i = 1; i < modChoices.size(); i++) {
+            ModChoice choice = modChoices.get(i);
+            String mode = choice.overlay
+                ? getString(R.string.setup_mod_mode_overlay)
+                : getString(R.string.setup_mod_mode_standalone);
+            labels[i - 1] = choice.name + "  •  " + choice.archives + " "
+                + getString(R.string.setup_mod_archive_count) + "  •  " + mode;
+        }
+
+        new android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.setup_mod_select_picker_title)
+            .setItems(labels, (dialog, which) -> {
+                int index = which + 1;
+                if (index < 1 || index >= modChoices.size()) return;
+                ModChoice choice = modChoices.get(index);
+                if (choice.path == null || !hasModArchives(new File(choice.path))) {
+                    Toast.makeText(this, R.string.setup_mod_path_no_archives, Toast.LENGTH_LONG).show();
+                    refreshModChoices();
+                    return;
+                }
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                    .putString(PREF_MOD_PATH, choice.path)
+                    .putString(PREF_MOD_MODE, choice.overlay ? MOD_MODE_OVERLAY : MOD_MODE_STANDALONE)
+                    .apply();
+                if (modSelectionSpinner != null) modSelectionSpinner.setSelection(index);
+                updateModSelectionSummary();
+                Toast.makeText(this, getString(R.string.setup_mod_selected_toast, choice.name),
+                    Toast.LENGTH_SHORT).show();
+            })
+            .setNegativeButton(R.string.common_cancel, null)
+            .show();
     }
 
     private void showModDownloadPicker() {
@@ -3497,7 +3555,10 @@ public class SetupActivity extends Activity {
             }
         } else if (requestCode == REQUEST_PICK_MOD_FOLDER && resultCode == Activity.RESULT_OK && data != null) {
             String path = data.getStringExtra(FolderPickerActivity.EXTRA_SELECTED_PATH);
-            if (path != null && saveModPath(path)) showTab(TAB_HOME);
+            if (path != null && saveModPath(path)) {
+            refreshModChoices();
+            showTab(TAB_HOME);
+        }
         } else if (requestCode == REQUEST_PICK_BASE_GENERALS && resultCode == Activity.RESULT_OK && data != null) {
             String path = data.getStringExtra(FolderPickerActivity.EXTRA_SELECTED_PATH);
             if (path != null) {
@@ -3714,6 +3775,7 @@ public class SetupActivity extends Activity {
     private void onLaunchGame() { launchGame(false); }
 
     private void onLaunchMod() {
+        // Re-read the persisted selection so this button always launches the item chosen in the Mod Files card.
         String path = getSavedModPath();
         File dir = path == null ? null : new File(path);
         if (!hasModArchives(dir)) {
