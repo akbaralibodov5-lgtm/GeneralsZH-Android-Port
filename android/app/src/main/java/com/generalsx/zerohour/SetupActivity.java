@@ -3182,7 +3182,7 @@ public class SetupActivity extends Activity {
         String mode = MOD_MODE_OVERLAY.equals(getSavedModMode())
             ? getString(R.string.setup_mod_mode_overlay)
             : getString(R.string.setup_mod_mode_standalone);
-        return getString(R.string.setup_mod_path_set, path, count) + "\\n" + mode;
+        return getString(R.string.setup_mod_path_set, path, count) + "\n" + mode;
     }
 
     private void updateModSelectionSummary() {
