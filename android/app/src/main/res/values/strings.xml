@@ -369,4 +369,25 @@
     <string name="setup_mod_folder_required_title">Choose a mod folder</string>
     <string name="setup_mod_folder_required_message">Choose the separate mod data folder first. It is used only when Launch Mod is pressed.</string>
     <string name="setup_card_mod_files">Mod Files</string>
+
+    <!-- Mod catalogue/download management -->
+    <string name="setup_button_download_mod">Download a mod</string>
+    <string name="setup_mod_selection_hint">Select an installed mod</string>
+    <string name="setup_mod_archive_count">archives</string>
+    <string name="setup_mod_external_suffix">external folder</string>
+    <string name="setup_mod_mode_overlay">Mode: add-on mod (runs over the selected base game)</string>
+    <string name="setup_mod_mode_standalone">Mode: standalone mod folder</string>
+    <string name="setup_mod_storage_unavailable">External storage is unavailable; cannot create the Mods folder.</string>
+    <string name="setup_mod_download_picker_title">Download a mod</string>
+    <string name="setup_mod_download_checking">Contacting the mod catalogue and checking file sizes…</string>
+    <string name="setup_mod_download_progress_title">Downloading %1$s</string>
+    <string name="setup_mod_download_failed_title">Mod download failed</string>
+    <string name="setup_mod_download_confirmation">%1$d files, %2$s total. Files are hosted by GenLauncher, not Waru Edition. HTTP is unencrypted. File sizes and available checksums are verified, but authenticity is not guaranteed. Use Wi-Fi only if you trust this source.</string>
+    <string name="setup_mod_download_size_title">Download %1$s?</string>
+    <string name="setup_mod_download_button">Download %1$s</string>
+    <string name="setup_mod_download_installed">Mod downloaded and selected. Check the base game folder is installed before launching.</string>
+    <string name="setup_mod_download_complete_title">Mod download completed</string>
+    <string name="setup_mod_download_selected">The mod is selected. Press Launch Mod to start it.</string>
+    <string name="setup_mod_download_missing_archives">The host returned files, but no .big or .gib archives were found. The mod was not selected; check the catalogue or install this mod manually.</string>
+
 </resources>
