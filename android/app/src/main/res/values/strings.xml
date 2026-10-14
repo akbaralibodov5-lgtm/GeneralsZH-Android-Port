@@ -372,6 +372,10 @@
 
     <!-- Mod catalogue/download management -->
     <string name="setup_button_download_mod">Download a mod</string>
+    <string name="setup_button_choose_installed_mod">Select Installed Mod</string>
+    <string name="setup_mod_select_picker_title">Select an installed mod</string>
+    <string name="setup_mod_no_installed">No installed mods were found. Download a mod or select a mod folder first.</string>
+    <string name="setup_mod_selected_toast">Selected mod: %1$s</string>
     <string name="setup_mod_selection_hint">Select an installed mod</string>
     <string name="setup_mod_archive_count">archives</string>
     <string name="setup_mod_external_suffix">external folder</string>
