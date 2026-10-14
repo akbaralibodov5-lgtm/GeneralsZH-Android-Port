@@ -50,11 +50,15 @@ import android.text.style.UnderlineSpan;
 import android.view.ContextThemeWrapper;
 import android.view.Menu;
 import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -80,9 +84,33 @@ public class SetupActivity extends Activity {
     static final String PREF_GAME_PATH = "game_path";
     // WARU Edition isolated optional mod profile.
     static final String PREF_MOD_PATH = "mod_path";
+    static final String PREF_MOD_MODE = "mod_mode";
+    static final String MOD_MODE_STANDALONE = "standalone";
+    static final String MOD_MODE_OVERLAY = "overlay";
     private static final String MOD_MARKER_NAME = "gamedata_mod_path.txt";
     private static final int REQUEST_PICK_MOD_FOLDER = 1004;
     private boolean pendingModLaunchAfterRotation = false;
+
+    private static final class ModChoice {
+        final String name;
+        final String path;
+        final boolean overlay;
+        final int archives;
+        ModChoice(String name, String path, boolean overlay, int archives) {
+            this.name = name;
+            this.path = path;
+            this.overlay = overlay;
+            this.archives = archives;
+        }
+    }
+
+    private Spinner modSelectionSpinner;
+    private TextView modSelectionSummary;
+    private final java.util.List<ModChoice> modChoices = new java.util.ArrayList<>();
+    private final WaruModDownloader modDownloader = new WaruModDownloader();
+    private android.app.AlertDialog modDownloadDialog;
+    private TextView modDownloadStatus;
+    private ProgressBar modDownloadProgress;
 
     // GeneralsX @feature Android port 15/09/2026 Simulation tick rate.
     //
@@ -475,11 +503,31 @@ public class SetupActivity extends Activity {
                 getString(R.string.setup_button_clear_base_generals), this::onClearBaseGeneralsFolder);
         }
 
-        // Separate Mod Files card, matching the supplied launcher screenshot.
+        // Mod Files: select an installed catalogue download, or import a mod already on the device.
         LinearLayout modFolder = UiKit.card(page);
         UiKit.sectionHeader(modFolder, R.drawable.ic_gzh_folder,
             getString(R.string.setup_card_mod_files), false);
-        UiKit.supporting(modFolder, modPathSummary());
+        modSelectionSummary = UiKit.supporting(modFolder, modPathSummary());
+        modSelectionSpinner = new Spinner(this);
+        modSelectionSpinner.setBackgroundColor(UiKit.color(this, R.color.gzh_surface_container));
+        modSelectionSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position < 0 || position >= modChoices.size()) return;
+                ModChoice choice = modChoices.get(position);
+                if (choice.path == null) return;
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                    .putString(PREF_MOD_PATH, choice.path)
+                    .putString(PREF_MOD_MODE, choice.overlay ? MOD_MODE_OVERLAY : MOD_MODE_STANDALONE)
+                    .apply();
+                updateModSelectionSummary();
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) { }
+        });
+        modFolder.addView(modSelectionSpinner, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        refreshModChoices();
+        UiKit.button(modFolder, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_download,
+            getString(R.string.setup_button_download_mod), this::showModDownloadPicker);
         UiKit.button(modFolder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
             getString(R.string.setup_button_select_mod_folder), this::onSelectModFolder);
         if (getSavedModPath() != null) {
@@ -3097,13 +3145,98 @@ public class SetupActivity extends Activity {
         return getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(PREF_MOD_PATH, null);
     }
 
+    private String getSavedModMode() {
+        return getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .getString(PREF_MOD_MODE, MOD_MODE_STANDALONE);
+    }
+
+    private File managedModsRoot() {
+        File root = getExternalFilesDir(null);
+        return root == null ? null : new File(root, "Mods");
+    }
+
+    private static boolean isModArchiveName(String name) {
+        String lower = name == null ? "" : name.toLowerCase(java.util.Locale.ROOT);
+        return lower.endsWith(".big") || lower.endsWith(".gib");
+    }
+
+    private static int countModArchives(File dir) {
+        if (dir == null || !dir.isDirectory()) return 0;
+        File[] files = dir.listFiles((parent, name) -> isModArchiveName(name));
+        return files == null ? 0 : files.length;
+    }
+
+    private static boolean hasModArchives(File dir) {
+        return countModArchives(dir) > 0;
+    }
+
     private String modPathSummary() {
         String path = getSavedModPath();
         if (path == null) return getString(R.string.setup_mod_path_not_set);
         File dir = new File(path);
         if (!dir.isDirectory()) return getString(R.string.setup_mod_path_invalid, path);
-        File[] archives = dir.listFiles((parent, name) -> name.toLowerCase(java.util.Locale.ROOT).endsWith(".big"));
-        return getString(R.string.setup_mod_path_set, path, archives == null ? 0 : archives.length);
+        int count = countModArchives(dir);
+        String mode = MOD_MODE_OVERLAY.equals(getSavedModMode())
+            ? getString(R.string.setup_mod_mode_overlay)
+            : getString(R.string.setup_mod_mode_standalone);
+        return getString(R.string.setup_mod_path_set, path, count) + "\\n" + mode;
+    }
+
+    private void updateModSelectionSummary() {
+        if (modSelectionSummary != null) modSelectionSummary.setText(modPathSummary());
+    }
+
+    private void refreshModChoices() {
+        if (modSelectionSpinner == null) return;
+        modChoices.clear();
+        modChoices.add(new ModChoice(getString(R.string.setup_mod_selection_hint), null, false, 0));
+        File root = managedModsRoot();
+        File[] folders = root != null ? root.listFiles() : null;
+        if (folders != null) {
+            java.util.Arrays.sort(folders, java.util.Comparator.comparing(
+                File::getName, String.CASE_INSENSITIVE_ORDER));
+            for (File folder : folders) {
+                if (folder.isDirectory() && hasModArchives(folder)) {
+                    modChoices.add(new ModChoice(folder.getName(), folder.getAbsolutePath(),
+                        true, countModArchives(folder)));
+                }
+            }
+        }
+        String selectedPath = getSavedModPath();
+        boolean listed = false;
+        for (ModChoice choice : modChoices) {
+            if (choice.path != null && choice.path.equals(selectedPath)) { listed = true; break; }
+        }
+        if (!listed && selectedPath != null) {
+            File selected = new File(selectedPath);
+            if (hasModArchives(selected)) {
+                modChoices.add(new ModChoice(selected.getName() + " — "
+                    + getString(R.string.setup_mod_external_suffix), selected.getAbsolutePath(),
+                    MOD_MODE_OVERLAY.equals(getSavedModMode()), countModArchives(selected)));
+            }
+        }
+        java.util.List<String> labels = new java.util.ArrayList<>();
+        for (int i = 0; i < modChoices.size(); i++) {
+            ModChoice choice = modChoices.get(i);
+            labels.add(i == 0 ? choice.name : choice.name + "  •  " + choice.archives
+                + " " + getString(R.string.setup_mod_archive_count));
+        }
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+            this, android.R.layout.simple_spinner_item, labels) {
+            @Override public View getView(int position, View convertView, ViewGroup parent) {
+                TextView text = (TextView) super.getView(position, convertView, parent);
+                text.setTextColor(UiKit.color(SetupActivity.this, R.color.gzh_on_surface));
+                return text;
+            }
+        };
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        modSelectionSpinner.setAdapter(adapter);
+        int selectedIndex = 0;
+        for (int i = 1; i < modChoices.size(); i++) {
+            if (modChoices.get(i).path.equals(selectedPath)) { selectedIndex = i; break; }
+        }
+        modSelectionSpinner.setSelection(selectedIndex);
+        updateModSelectionSummary();
     }
 
     private void onSelectModFolder() {
@@ -3131,7 +3264,8 @@ public class SetupActivity extends Activity {
     }
 
     private void onClearModFolder() {
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().remove(PREF_MOD_PATH).apply();
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+            .remove(PREF_MOD_PATH).remove(PREF_MOD_MODE).apply();
         new File(getFilesDir(), MOD_MARKER_NAME).delete();
         Toast.makeText(this, R.string.setup_toast_mod_folder_cleared, Toast.LENGTH_SHORT).show();
         showTab(TAB_HOME);
@@ -3144,9 +3278,128 @@ public class SetupActivity extends Activity {
             Toast.makeText(this, R.string.setup_mod_path_no_archives, Toast.LENGTH_LONG).show();
             return false;
         }
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putString(PREF_MOD_PATH, dir.getAbsolutePath()).apply();
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+            .putString(PREF_MOD_PATH, dir.getAbsolutePath())
+            .putString(PREF_MOD_MODE, MOD_MODE_STANDALONE)
+            .apply();
+        refreshModChoices();
         Toast.makeText(this, R.string.setup_toast_mod_folder_saved, Toast.LENGTH_LONG).show();
         return true;
+    }
+
+    private void showModDownloadPicker() {
+        final File root = managedModsRoot();
+        if (root == null) {
+            Toast.makeText(this, R.string.setup_mod_storage_unavailable, Toast.LENGTH_LONG).show();
+            return;
+        }
+        WaruModDownloader.Catalog[] catalogue = WaruModDownloader.CATALOG;
+        String[] labels = new String[catalogue.length];
+        for (int i = 0; i < catalogue.length; i++) labels[i] = catalogue[i].toString();
+        new android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.setup_mod_download_picker_title)
+            .setItems(labels, (dialog, which) -> {
+                WaruModDownloader.Catalog entry = catalogue[which];
+                queryModDownloadSize(entry, new File(root, entry.name));
+            })
+            .setNegativeButton(R.string.common_cancel, null)
+            .show();
+    }
+
+    private void queryModDownloadSize(final WaruModDownloader.Catalog entry, final File destination) {
+        final TextView message = new TextView(this);
+        message.setText(R.string.setup_mod_download_checking);
+        message.setPadding(dp(20), dp(12), dp(20), dp(12));
+        final android.app.AlertDialog waiting = new android.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.setup_mod_download_progress_title, entry.name))
+            .setView(message)
+            .setNegativeButton(R.string.common_cancel, (dialog, which) -> modDownloader.cancel())
+            .create();
+        waiting.setOnCancelListener(dialog -> modDownloader.cancel());
+        waiting.show();
+        modDownloader.querySize(entry, (ok, files, bytes, error) -> {
+            if (isFinishing() || isDestroyed()) return;
+            if (waiting.isShowing()) waiting.dismiss();
+            if (!ok) {
+                new android.app.AlertDialog.Builder(this)
+                    .setTitle(R.string.setup_mod_download_failed_title)
+                    .setMessage(error)
+                    .setPositiveButton(R.string.common_cancel, null)
+                    .show();
+                return;
+            }
+            String size = WaruModDownloader.human(bytes);
+            String confirmation = getString(R.string.setup_mod_download_confirmation, files, size, entry.name);
+            new android.app.AlertDialog.Builder(this)
+                .setTitle(getString(R.string.setup_mod_download_size_title, entry.name))
+                .setMessage(confirmation)
+                .setPositiveButton(getString(R.string.setup_mod_download_button, size),
+                    (dialog, which) -> beginModDownload(entry, destination))
+                .setNegativeButton(R.string.common_cancel, null)
+                .show();
+        });
+    }
+
+    private void beginModDownload(final WaruModDownloader.Catalog entry, final File destination) {
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(20), dp(12), dp(20), dp(12));
+        modDownloadStatus = new TextView(this);
+        modDownloadStatus.setText(R.string.setup_mod_download_checking);
+        content.addView(modDownloadStatus, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        modDownloadProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        modDownloadProgress.setMax(100);
+        modDownloadProgress.setProgress(0);
+        LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, dp(8));
+        progressParams.topMargin = dp(12);
+        content.addView(modDownloadProgress, progressParams);
+        modDownloadDialog = new android.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.setup_mod_download_progress_title, entry.name))
+            .setView(content)
+            .setNegativeButton(R.string.common_cancel, (dialog, which) -> modDownloader.cancel())
+            .create();
+        modDownloadDialog.setOnCancelListener(dialog -> modDownloader.cancel());
+        modDownloadDialog.show();
+
+        modDownloader.download(entry, destination, new WaruModDownloader.Listener() {
+            @Override public void onProgress(String message, int percent) {
+                if (isFinishing() || isDestroyed()) return;
+                if (modDownloadStatus != null) modDownloadStatus.setText(message);
+                if (modDownloadProgress != null) modDownloadProgress.setProgress(percent);
+            }
+
+            @Override public void onFinished(boolean ok, String message) {
+                if (isFinishing() || isDestroyed()) return;
+                if (modDownloadDialog != null && modDownloadDialog.isShowing()) modDownloadDialog.dismiss();
+                modDownloadDialog = null;
+                modDownloadStatus = null;
+                modDownloadProgress = null;
+
+                if (ok && hasModArchives(destination)) {
+                    getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                        .putString(PREF_MOD_PATH, destination.getAbsolutePath())
+                        .putString(PREF_MOD_MODE, MOD_MODE_OVERLAY)
+                        .apply();
+                    showTab(TAB_HOME);
+                    Toast.makeText(SetupActivity.this, R.string.setup_mod_download_installed,
+                        Toast.LENGTH_LONG).show();
+                    new android.app.AlertDialog.Builder(SetupActivity.this)
+                        .setTitle(R.string.setup_mod_download_complete_title)
+                        .setMessage(message + "\n\n" + getString(R.string.setup_mod_download_selected))
+                        .setPositiveButton(R.string.common_cancel, null)
+                        .show();
+                } else {
+                    String details = ok ? getString(R.string.setup_mod_download_missing_archives) : message;
+                    new android.app.AlertDialog.Builder(SetupActivity.this)
+                        .setTitle(R.string.setup_mod_download_failed_title)
+                        .setMessage(details)
+                        .setPositiveButton(R.string.common_cancel, null)
+                        .show();
+                }
+            }
+        });
     }
 
     private void onClearBaseGeneralsFolder() {
@@ -3462,9 +3715,7 @@ public class SetupActivity extends Activity {
     private void onLaunchMod() {
         String path = getSavedModPath();
         File dir = path == null ? null : new File(path);
-        File[] archives = dir != null && dir.isDirectory()
-            ? dir.listFiles((parent, name) -> name.toLowerCase(java.util.Locale.ROOT).endsWith(".big")) : null;
-        if (archives == null || archives.length == 0) {
+        if (!hasModArchives(dir)) {
             new android.app.AlertDialog.Builder(this)
                 .setTitle(R.string.setup_mod_folder_required_title)
                 .setMessage(R.string.setup_mod_folder_required_message)
@@ -3478,13 +3729,19 @@ public class SetupActivity extends Activity {
 
     private void launchGame(boolean mod) {
         if (mod) {
-            String path = getSavedModPath();
-            try (java.io.FileWriter w = new java.io.FileWriter(new File(getFilesDir(), MOD_MARKER_NAME), false)) {
-                w.write(new File(path).getCanonicalPath());
-                w.write("\n");
-            } catch (java.io.IOException e) {
-                Toast.makeText(this, getString(R.string.setup_toast_marker_save_failed, e.getMessage()), Toast.LENGTH_LONG).show();
-                return;
+            if (MOD_MODE_OVERLAY.equals(getSavedModMode())) {
+                // A partial catalogue mod overlays the selected game data using -mod.
+                // Do not switch the current working directory into the partial mod folder.
+                new File(getFilesDir(), MOD_MARKER_NAME).delete();
+            } else {
+                String path = getSavedModPath();
+                try (java.io.FileWriter w = new java.io.FileWriter(new File(getFilesDir(), MOD_MARKER_NAME), false)) {
+                    w.write(new File(path).getCanonicalPath());
+                    w.write("\n");
+                } catch (java.io.IOException e) {
+                    Toast.makeText(this, getString(R.string.setup_toast_marker_save_failed, e.getMessage()), Toast.LENGTH_LONG).show();
+                    return;
+                }
             }
         } else {
             new File(getFilesDir(), MOD_MARKER_NAME).delete();

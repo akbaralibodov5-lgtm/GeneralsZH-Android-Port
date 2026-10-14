@@ -167,6 +167,18 @@ public class GeneralsZHActivity extends SDLActivity {
             args.add(safeInsets);
         }
         Intent intent = getIntent();
+        boolean launchMod = intent != null && intent.getBooleanExtra(EXTRA_LAUNCH_MOD, false);
+        if (launchMod) {
+            android.content.SharedPreferences prefs = getSharedPreferences(SetupActivity.PREFS_NAME, MODE_PRIVATE);
+            String modMode = prefs.getString(SetupActivity.PREF_MOD_MODE, SetupActivity.MOD_MODE_STANDALONE);
+            String modPath = prefs.getString(SetupActivity.PREF_MOD_PATH, null);
+            if (SetupActivity.MOD_MODE_OVERLAY.equals(modMode)
+                    && modPath != null && new File(modPath).isDirectory()) {
+                args.add("-mod");
+                args.add(modPath);
+                Log.i(TAG, "Launching overlay mod: " + modPath);
+            }
+        }
         String replay = intent != null ? intent.getStringExtra(EXTRA_REPLAY) : null;
         if (replay == null || replay.isEmpty()) {
             return args.toArray(new String[0]);
@@ -384,19 +396,36 @@ public class GeneralsZHActivity extends SDLActivity {
         extractBundledRuntime();
 
         boolean launchMod = getIntent() != null && getIntent().getBooleanExtra(EXTRA_LAUNCH_MOD, false);
-        String gamePath = launchMod
-            ? getSharedPreferences(SetupActivity.PREFS_NAME, MODE_PRIVATE).getString(SetupActivity.PREF_MOD_PATH, null)
-            : getSavedGamePath();
-        boolean haveCustomPath = launchMod
-            ? gamePath != null && new File(gamePath).isDirectory()
-            : gamePath != null && SetupActivity.isValidGameFolder(new File(gamePath));
-        File[] modArchives = launchMod && haveCustomPath
-            ? new File(gamePath).listFiles((parent, name) -> name.toLowerCase(java.util.Locale.ROOT).endsWith(".big")) : null;
-        boolean haveLegacyPath = !launchMod && !haveCustomPath && isValidGameFolder(legacyGameDataDir());
+        android.content.SharedPreferences setupPrefs =
+            getSharedPreferences(SetupActivity.PREFS_NAME, MODE_PRIVATE);
+        String selectedModPath = launchMod ? setupPrefs.getString(SetupActivity.PREF_MOD_PATH, null) : null;
+        String modMode = setupPrefs.getString(SetupActivity.PREF_MOD_MODE, SetupActivity.MOD_MODE_STANDALONE);
+        boolean overlayMod = launchMod && SetupActivity.MOD_MODE_OVERLAY.equals(modMode);
+        // Catalogue mods are partial overlays; they must keep the base game's working directory.
+        String gamePath = launchMod && !overlayMod ? selectedModPath : getSavedGamePath();
+        boolean haveCustomPath = overlayMod
+            ? gamePath != null && SetupActivity.isValidGameFolder(new File(gamePath))
+            : (launchMod
+                ? gamePath != null && new File(gamePath).isDirectory()
+                : gamePath != null && SetupActivity.isValidGameFolder(new File(gamePath)));
+        File[] modArchives = launchMod && selectedModPath != null && new File(selectedModPath).isDirectory()
+            ? new File(selectedModPath).listFiles((parent, name) -> {
+                String n = name.toLowerCase(java.util.Locale.ROOT);
+                return n.endsWith(".big") || n.endsWith(".gib");
+            }) : null;
+        boolean haveLegacyPath = (!launchMod || overlayMod) && !haveCustomPath
+            && isValidGameFolder(legacyGameDataDir());
 
-        if (launchMod && (gamePath == null || !haveCustomPath || modArchives == null || modArchives.length == 0)) {
-            Log.e(TAG, "Mod launch requested but its folder is unavailable");
+        if (launchMod && (selectedModPath == null || !new File(selectedModPath).isDirectory()
+                || modArchives == null || modArchives.length == 0)) {
+            Log.e(TAG, "Mod launch requested but its folder is unavailable or contains no .big/.gib archives");
             new File(getFilesDir(), "gamedata_mod_path.txt").delete();
+            startActivity(new Intent(this, SetupActivity.class));
+            finish();
+            return;
+        }
+        if (overlayMod && !haveCustomPath && !haveLegacyPath) {
+            Log.e(TAG, "Overlay mod requested but base game data is unavailable");
             startActivity(new Intent(this, SetupActivity.class));
             finish();
             return;
@@ -429,7 +458,7 @@ public class GeneralsZHActivity extends SDLActivity {
         // already had a custom path saved before this fix shipped would
         // otherwise keep missing fonts/ forever (every button renders with no
         // text; see SetupActivity.copyBundledRuntimeIfMissing for why).
-        if (haveCustomPath && !launchMod) {
+        if (haveCustomPath && (!launchMod || overlayMod)) {
             File bundledRoot = getExternalFilesDir(null);
             if (bundledRoot != null) {
                 SetupActivity.copyBundledRuntimeIfMissing(bundledRoot, gamePath);
