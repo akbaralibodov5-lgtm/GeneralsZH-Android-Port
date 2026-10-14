@@ -382,7 +382,7 @@
     <string name="setup_mod_download_checking">Contacting the mod catalogue and checking file sizes…</string>
     <string name="setup_mod_download_progress_title">Downloading %1$s</string>
     <string name="setup_mod_download_failed_title">Mod download failed</string>
-    <string name="setup_mod_download_confirmation">%1$d files, %2$s total. Downloads come from the public GenLauncher host, not Waru Edition. This server uses HTTP without encryption. File sizes and available checksums are checked, but this does not guarantee authenticity. Use Wi-Fi and proceed only if you trust the source.</string>
+    <string name="setup_mod_download_confirmation">%1$d files, %2$s total. Files are hosted by GenLauncher, not Waru Edition. HTTP is unencrypted. File sizes and available checksums are verified, but authenticity is not guaranteed. Use Wi-Fi only if you trust this source.</string>
     <string name="setup_mod_download_size_title">Download %1$s?</string>
     <string name="setup_mod_download_button">Download %1$s</string>
     <string name="setup_mod_download_installed">Mod downloaded and selected. Check the base game folder is installed before launching.</string>
