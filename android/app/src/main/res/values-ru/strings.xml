@@ -350,6 +350,10 @@
 
     <!-- Управление модами и загрузка -->
     <string name="setup_button_download_mod">Скачать мод</string>
+    <string name="setup_button_choose_installed_mod">Выбрать установленный мод</string>
+    <string name="setup_mod_select_picker_title">Выбор установленного мода</string>
+    <string name="setup_mod_no_installed">Установленные моды не найдены. Сначала скачайте мод или выберите папку с модом.</string>
+    <string name="setup_mod_selected_toast">Выбран мод: %1$s</string>
     <string name="setup_mod_selection_hint">Выберите установленный мод</string>
     <string name="setup_mod_archive_count">архивов</string>
     <string name="setup_mod_external_suffix">внешняя папка</string>
