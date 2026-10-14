@@ -3287,6 +3287,121 @@ public class SetupActivity extends Activity {
         return true;
     }
 
+    private void showModDownloadPicker() {
+        final File root = managedModsRoot();
+        if (root == null) {
+            Toast.makeText(this, R.string.setup_mod_storage_unavailable, Toast.LENGTH_LONG).show();
+            return;
+        }
+        WaruModDownloader.Catalog[] catalogue = WaruModDownloader.CATALOG;
+        String[] labels = new String[catalogue.length];
+        for (int i = 0; i < catalogue.length; i++) labels[i] = catalogue[i].toString();
+        new android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.setup_mod_download_picker_title)
+            .setItems(labels, (dialog, which) -> {
+                WaruModDownloader.Catalog entry = catalogue[which];
+                queryModDownloadSize(entry, new File(root, entry.name));
+            })
+            .setNegativeButton(R.string.common_cancel, null)
+            .show();
+    }
+
+    private void queryModDownloadSize(final WaruModDownloader.Catalog entry, final File destination) {
+        final TextView message = new TextView(this);
+        message.setText(R.string.setup_mod_download_checking);
+        message.setPadding(dp(20), dp(12), dp(20), dp(12));
+        final android.app.AlertDialog waiting = new android.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.setup_mod_download_progress_title, entry.name))
+            .setView(message)
+            .setNegativeButton(R.string.common_cancel, (dialog, which) -> modDownloader.cancel())
+            .create();
+        waiting.setOnCancelListener(dialog -> modDownloader.cancel());
+        waiting.show();
+        modDownloader.querySize(entry, (ok, files, bytes, error) -> {
+            if (isFinishing() || isDestroyed()) return;
+            if (waiting.isShowing()) waiting.dismiss();
+            if (!ok) {
+                new android.app.AlertDialog.Builder(this)
+                    .setTitle(R.string.setup_mod_download_failed_title)
+                    .setMessage(error)
+                    .setPositiveButton(R.string.common_cancel, null)
+                    .show();
+                return;
+            }
+            String size = WaruModDownloader.human(bytes);
+            String confirmation = getString(R.string.setup_mod_download_confirmation, files, size, entry.name);
+            new android.app.AlertDialog.Builder(this)
+                .setTitle(getString(R.string.setup_mod_download_size_title, entry.name))
+                .setMessage(confirmation)
+                .setPositiveButton(getString(R.string.setup_mod_download_button, size),
+                    (dialog, which) -> beginModDownload(entry, destination))
+                .setNegativeButton(R.string.common_cancel, null)
+                .show();
+        });
+    }
+
+    private void beginModDownload(final WaruModDownloader.Catalog entry, final File destination) {
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(20), dp(12), dp(20), dp(12));
+        modDownloadStatus = new TextView(this);
+        modDownloadStatus.setText(R.string.setup_mod_download_checking);
+        content.addView(modDownloadStatus, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        modDownloadProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        modDownloadProgress.setMax(100);
+        modDownloadProgress.setProgress(0);
+        LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, dp(8));
+        progressParams.topMargin = dp(12);
+        content.addView(modDownloadProgress, progressParams);
+        modDownloadDialog = new android.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.setup_mod_download_progress_title, entry.name))
+            .setView(content)
+            .setNegativeButton(R.string.common_cancel, (dialog, which) -> modDownloader.cancel())
+            .create();
+        modDownloadDialog.setOnCancelListener(dialog -> modDownloader.cancel());
+        modDownloadDialog.show();
+
+        modDownloader.download(entry, destination, new WaruModDownloader.Listener() {
+            @Override public void onProgress(String message, int percent) {
+                if (isFinishing() || isDestroyed()) return;
+                if (modDownloadStatus != null) modDownloadStatus.setText(message);
+                if (modDownloadProgress != null) modDownloadProgress.setProgress(percent);
+            }
+
+            @Override public void onFinished(boolean ok, String message) {
+                if (isFinishing() || isDestroyed()) return;
+                if (modDownloadDialog != null && modDownloadDialog.isShowing()) modDownloadDialog.dismiss();
+                modDownloadDialog = null;
+                modDownloadStatus = null;
+                modDownloadProgress = null;
+
+                if (ok && hasModArchives(destination)) {
+                    getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                        .putString(PREF_MOD_PATH, destination.getAbsolutePath())
+                        .putString(PREF_MOD_MODE, MOD_MODE_OVERLAY)
+                        .apply();
+                    showTab(TAB_HOME);
+                    Toast.makeText(SetupActivity.this, R.string.setup_mod_download_installed,
+                        Toast.LENGTH_LONG).show();
+                    new android.app.AlertDialog.Builder(SetupActivity.this)
+                        .setTitle(R.string.setup_mod_download_complete_title)
+                        .setMessage(message + "\n\n" + getString(R.string.setup_mod_download_selected))
+                        .setPositiveButton(R.string.common_cancel, null)
+                        .show();
+                } else {
+                    String details = ok ? getString(R.string.setup_mod_download_missing_archives) : message;
+                    new android.app.AlertDialog.Builder(SetupActivity.this)
+                        .setTitle(R.string.setup_mod_download_failed_title)
+                        .setMessage(details)
+                        .setPositiveButton(R.string.common_cancel, null)
+                        .show();
+                }
+            }
+        });
+    }
+
     private void onClearBaseGeneralsFolder() {
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().remove(PREF_BASE_GENERALS_PATH).apply();
         new File(getFilesDir(), "generals_base_path.txt").delete();
