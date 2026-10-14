@@ -413,7 +413,7 @@ public class GeneralsZHActivity extends SDLActivity {
                 String n = name.toLowerCase(java.util.Locale.ROOT);
                 return n.endsWith(".big") || n.endsWith(".gib");
             }) : null;
-        boolean haveLegacyPath = !overlayMod && !launchMod && !haveCustomPath
+        boolean haveLegacyPath = (!launchMod || overlayMod) && !haveCustomPath
             && isValidGameFolder(legacyGameDataDir());
 
         if (launchMod && (selectedModPath == null || !new File(selectedModPath).isDirectory()
