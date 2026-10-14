@@ -1,1 +1,3 @@
 CI validation marker: the setup_mod_download_confirmation string was simplified to avoid the AAPT Invalid unicode escape sequence failure. This file can be deleted after the workflow validates the branch.
+
+Validation trigger for the ViewGroup import fix in SetupActivity.java (commit ea1860957806b96203e694654e8e37730de9a890).
