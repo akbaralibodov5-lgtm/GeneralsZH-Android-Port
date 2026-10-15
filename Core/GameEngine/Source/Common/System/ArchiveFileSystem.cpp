@@ -399,6 +399,15 @@ void ArchiveFileSystem::loadMods()
 		MAYBE_UNUSED Bool ret = loadBigFilesFromDirectory(TheGlobalData->m_modDir, "*.big", TRUE);
 		(void)ret;
 		DEBUG_ASSERTLOG(ret, ("loadBigFilesFromDirectory(%s) returned FALSE!", TheGlobalData->m_modDir.str()));
+
+		// GeneralsX @bugfix Android port: GenLauncher distributed data mods use
+		// .gib files, which contain the same BIGF archive format as .big. The
+		// retail archive filter does not load them by design, so scan this
+		// explicit -mod directory separately. Keep this after .big so archive
+		// filename prefixes and overwrite order preserve mod-provided overrides.
+		ret = loadBigFilesFromDirectory(TheGlobalData->m_modDir, "*.gib", TRUE);
+		(void)ret;
+		DEBUG_ASSERTLOG(ret, ("loadBigFilesFromDirectory(%s, *.gib) returned FALSE!", TheGlobalData->m_modDir.str()));
 	}
 }
 
