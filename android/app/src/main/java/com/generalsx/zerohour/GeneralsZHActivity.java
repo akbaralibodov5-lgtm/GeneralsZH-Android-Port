@@ -463,7 +463,11 @@ public class GeneralsZHActivity extends SDLActivity {
         // already had a custom path saved before this fix shipped would
         // otherwise keep missing fonts/ forever (every button renders with no
         // text; see SetupActivity.copyBundledRuntimeIfMissing for why).
-        if (haveCustomPath && (!launchMod || overlayMod)) {
+        if (haveCustomPath) {
+            // Standalone mods need the same bundled runtime files (fonts,
+            // dxvk.conf, DefaultOptions.ini) as a regular game folder. Overlay
+            // mods still copy these into the base game directory because
+            // gamePath points there for overlay launches.
             File bundledRoot = getExternalFilesDir(null);
             if (bundledRoot != null) {
                 SetupActivity.copyBundledRuntimeIfMissing(bundledRoot, gamePath);
