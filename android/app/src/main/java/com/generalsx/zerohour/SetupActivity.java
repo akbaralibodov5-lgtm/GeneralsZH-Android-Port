@@ -538,8 +538,6 @@ public class SetupActivity extends Activity {
             getString(R.string.setup_button_download_mod), this::showModDownloadPicker);
         UiKit.button(modFolder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
             getString(R.string.setup_button_select_mod_folder), this::onSelectModFolder);
-        UiKit.button(modFolder, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_folder,
-            "Import Reloaded Fire ZIP parts…", this::onImportModZipParts);
         if (getSavedModPath() != null) {
             UiKit.button(modFolder, UiKit.BTN_DANGER, R.drawable.ic_gzh_broom,
                 getString(R.string.setup_button_clear_mod_folder), this::onClearModFolder);
@@ -3194,8 +3192,11 @@ public class SetupActivity extends Activity {
     }
 
     private File managedModsRoot() {
+        // Catalogue downloads have a dedicated app-private namespace. Do not
+        // share the old "Mods" directory used by the removed ZIP importer or
+        // any folder the user selects manually from Downloads/Telegram.
         File root = getExternalFilesDir(null);
-        return root == null ? null : new File(root, "Mods");
+        return root == null ? null : new File(root, "DownloadedMods");
     }
 
     private static boolean isModArchiveName(String name) {
