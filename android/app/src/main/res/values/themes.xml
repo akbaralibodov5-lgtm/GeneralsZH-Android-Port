@@ -11,7 +11,7 @@
          launcher has always drawn on a dark ground, its accent palette is
          designed for one, and committing to it means the contrast of every
          colour pair below can be reasoned about once instead of twice. -->
-    <style name="Theme.GeneralsZHSettings" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Theme.GeneralsZHSettings" parent="Theme.Material3.Light.NoActionBar">
         <!-- M3 colour roles -->
         <item name="colorPrimary">@color/gzh_primary</item>
         <item name="colorOnPrimary">@color/gzh_on_primary</item>
@@ -54,7 +54,7 @@
              all the way to the physical edges instead of banding. -->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightStatusBar">true</item>
 
         <!-- Material's own dialogs/alerts follow the same palette. -->
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.GeneralsZH.Dialog</item>

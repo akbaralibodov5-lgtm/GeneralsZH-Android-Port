@@ -59,6 +59,7 @@ import java.io.OutputStream;
 public class GeneralsZHActivity extends SDLActivity {
 
     private static final String TAG = "GeneralsZH";
+    static final String EXTRA_LAUNCH_MOD = "waru_launch_mod";
 
     // GeneralsX @feature Android port 23/09/2026 Launch options from the Replay check
     // screen (ReplayCheckActivity): play one replay, optionally fast-forwarded to a frame
@@ -104,12 +105,10 @@ public class GeneralsZHActivity extends SDLActivity {
     private static native void nativeTextEditorChanged(String text, int serial);
     private static native void nativeTextEditorDone(String text, boolean submit, int serial);
 
-    @SuppressWarnings("unused") // called via JNI
+    @SuppressWarnings("unused")
     public void showTextEditor(final String text, final int maxLength, final int flags, final int serial) {
         runOnUiThread(() -> {
-            if (mLayout == null) {
-                return;
-            }
+            if (mLayout == null) return;
             if (textEditorBar == null) {
                 textEditorBar = new TextEditorBar(this, mLayout, new TextEditorBar.Listener() {
                     @Override public void onChanged(String changed, int changedSerial) {
@@ -119,23 +118,24 @@ public class GeneralsZHActivity extends SDLActivity {
                         nativeTextEditorDone(finished, submit, doneSerial);
                     }
                 }, () -> {
-                    if (mSurface != null) {
-                        mSurface.requestFocus();
-                    }
+                    if (mSurface != null) mSurface.requestFocus();
                 });
             }
             textEditorBar.show(text, maxLength, flags, serial);
         });
     }
 
-    @SuppressWarnings("unused") // called via JNI
+    @SuppressWarnings("unused")
     public void hideTextEditor() {
         runOnUiThread(() -> {
-            if (textEditorBar != null) {
-                textEditorBar.hide();
-            }
+            if (textEditorBar != null) textEditorBar.hide();
         });
     }
+
+
+    // Optional transparent PC-style keyboard overlay, initialized after SDL creates the layout.
+    private VirtualKeyboardOverlay virtualKeyboardOverlay;
+    private static native void nativeVirtualKey(int scanCode, boolean down);
 
     // Back closes the bar (keeping the text) instead of reaching the game. While the keyboard
     // is up, the keyboard takes the first Back itself.
@@ -161,12 +161,28 @@ public class GeneralsZHActivity extends SDLActivity {
     @Override
     protected String[] getArguments() {
         java.util.ArrayList<String> args = new java.util.ArrayList<>();
+        // CommandLine::parseCommandLineForStartup/EngineInit starts at argv[1].
+        // SDL passes this array as argv, so slot 0 must be a program-name placeholder;
+        // otherwise -mod (and every other launcher argument) is silently skipped.
+        args.add("generalszh");
         String safeInsets = computeSafeInsetsArgument();
         if (safeInsets != null) {
             args.add("-gxSafeInsets");
             args.add(safeInsets);
         }
         Intent intent = getIntent();
+        boolean launchMod = intent != null && intent.getBooleanExtra(EXTRA_LAUNCH_MOD, false);
+        if (launchMod) {
+            android.content.SharedPreferences prefs = getSharedPreferences(SetupActivity.PREFS_NAME, MODE_PRIVATE);
+            String modMode = prefs.getString(SetupActivity.PREF_MOD_MODE, SetupActivity.MOD_MODE_STANDALONE);
+            String modPath = prefs.getString(SetupActivity.PREF_MOD_PATH, null);
+            if (SetupActivity.MOD_MODE_OVERLAY.equals(modMode)
+                    && modPath != null && new File(modPath).isDirectory()) {
+                args.add("-mod");
+                args.add(modPath);
+                Log.i(TAG, "Launching overlay mod: " + modPath);
+            }
+        }
         String replay = intent != null ? intent.getStringExtra(EXTRA_REPLAY) : null;
         if (replay == null || replay.isEmpty()) {
             return args.toArray(new String[0]);
@@ -185,6 +201,7 @@ public class GeneralsZHActivity extends SDLActivity {
             args.add("-gxCrcEveryFrame");
         }
         Log.i(TAG, "Replay check launch: " + args);
+        Log.i(TAG, "Native launch arguments: " + args);
         return args.toArray(new String[0]);
     }
 
@@ -284,10 +301,13 @@ public class GeneralsZHActivity extends SDLActivity {
         // lockstep with the Windows client. If the 60 Hz library is somehow missing
         // from the APK, fall back rather than fail to start.
         String engine = "main";
+        boolean launchMod = getIntent() != null && getIntent().getBooleanExtra(EXTRA_LAUNCH_MOD, false);
         if (SetupActivity.getSimHz(this) == SetupActivity.SIM_HZ_CROSSPLAY
                 && new java.io.File(getApplicationInfo().nativeLibraryDir, "libmain60.so").isFile()) {
             engine = "main60";
         }
+        Log.i(TAG, "Launch profile: " + (launchMod ? "MOD" : "RETAIL")
+            + ", simulation rate=" + SetupActivity.getSimHz(this) + " Hz");
         Log.i(TAG, "Loading engine library: lib" + engine + ".so");
         return new String[] {
             "SDL3",
@@ -350,6 +370,24 @@ public class GeneralsZHActivity extends SDLActivity {
     }
 
     @Override
+    protected void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        // SDLActivity's layout is attached during onCreate. Add the overlay on the UI thread
+        // after that layout exists; post() also handles SDL versions attaching it slightly later.
+        if (mLayout != null) {
+            mLayout.post(() -> {
+                if (virtualKeyboardOverlay == null && mLayout != null) {
+                    virtualKeyboardOverlay = new VirtualKeyboardOverlay(this, mLayout,
+                        new VirtualKeyboardOverlay.KeySink() {
+                            @Override public void onKey(int scanCode, boolean down) {
+                                nativeVirtualKey(scanCode, down);
+                            }
+                        });
+                }
+            });
+        }
+    }
+
     protected void onCreate(Bundle savedInstanceState) {
         // TheSuperHackers @bugfix Android port 07/07/2026 Belt-and-suspenders
         // on top of the manifest's screenOrientation="landscape": a real
@@ -362,10 +400,41 @@ public class GeneralsZHActivity extends SDLActivity {
 
         extractBundledRuntime();
 
-        String gamePath = getSavedGamePath();
-        boolean haveCustomPath = gamePath != null && SetupActivity.isValidGameFolder(new File(gamePath));
-        boolean haveLegacyPath = !haveCustomPath && isValidGameFolder(legacyGameDataDir());
+        boolean launchMod = getIntent() != null && getIntent().getBooleanExtra(EXTRA_LAUNCH_MOD, false);
+        android.content.SharedPreferences setupPrefs =
+            getSharedPreferences(SetupActivity.PREFS_NAME, MODE_PRIVATE);
+        String selectedModPath = launchMod ? setupPrefs.getString(SetupActivity.PREF_MOD_PATH, null) : null;
+        String modMode = setupPrefs.getString(SetupActivity.PREF_MOD_MODE, SetupActivity.MOD_MODE_STANDALONE);
+        boolean overlayMod = launchMod && SetupActivity.MOD_MODE_OVERLAY.equals(modMode);
+        // Catalogue mods are partial overlays; they must keep the base game's working directory.
+        String gamePath = launchMod && !overlayMod ? selectedModPath : getSavedGamePath();
+        boolean haveCustomPath = overlayMod
+            ? gamePath != null && SetupActivity.isValidGameFolder(new File(gamePath))
+            : (launchMod
+                ? gamePath != null && new File(gamePath).isDirectory()
+                : gamePath != null && SetupActivity.isValidGameFolder(new File(gamePath)));
+        File[] modArchives = launchMod && selectedModPath != null && new File(selectedModPath).isDirectory()
+            ? new File(selectedModPath).listFiles((parent, name) -> {
+                String n = name.toLowerCase(java.util.Locale.ROOT);
+                return n.endsWith(".big") || n.endsWith(".gib");
+            }) : null;
+        boolean haveLegacyPath = (!launchMod || overlayMod) && !haveCustomPath
+            && isValidGameFolder(legacyGameDataDir());
 
+        if (launchMod && (selectedModPath == null || !new File(selectedModPath).isDirectory()
+                || modArchives == null || modArchives.length == 0)) {
+            Log.e(TAG, "Mod launch requested but its folder is unavailable or contains no .big/.gib archives");
+            new File(getFilesDir(), "gamedata_mod_path.txt").delete();
+            startActivity(new Intent(this, SetupActivity.class));
+            finish();
+            return;
+        }
+        if (overlayMod && !haveCustomPath && !haveLegacyPath) {
+            Log.e(TAG, "Overlay mod requested but base game data is unavailable");
+            startActivity(new Intent(this, SetupActivity.class));
+            finish();
+            return;
+        }
         if (!haveCustomPath && !haveLegacyPath) {
             // Never touch libmain.so on a misconfigured install: redirect to
             // Setup instead of letting SDLActivity load the native library
@@ -395,6 +464,10 @@ public class GeneralsZHActivity extends SDLActivity {
         // otherwise keep missing fonts/ forever (every button renders with no
         // text; see SetupActivity.copyBundledRuntimeIfMissing for why).
         if (haveCustomPath) {
+            // Standalone mods need the same bundled runtime files (fonts,
+            // dxvk.conf, DefaultOptions.ini) as a regular game folder. Overlay
+            // mods still copy these into the base game directory because
+            // gamePath points there for overlay launches.
             File bundledRoot = getExternalFilesDir(null);
             if (bundledRoot != null) {
                 SetupActivity.copyBundledRuntimeIfMissing(bundledRoot, gamePath);

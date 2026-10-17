@@ -347,4 +347,29 @@
     <string name="setup_interface_scale_label">%1$d%%</string>
     <string name="setup_button_apply_interface_scale">Применить размер интерфейса</string>
     <string name="setup_interface_scale_help">Увеличивает интерфейс игры без правки её файлов: нижняя панель с картой растёт вверх от края экрана, а панель способностей генерала, чат, сообщения о событиях, список игроков, игровое меню с сохранением и настройками и кнопки главного меню растут от того места, где находятся. За экран ничего не уходит: каждая часть увеличивается только насколько помещается, поэтому на широком телефоне нижняя панель становится выше, а не шире, и поле боя над ней — ниже. Работает вместе с «Размером текста меню». Вступает в силу при следующем запуске игры.</string>
+
+    <!-- Управление модами и загрузка -->
+    <string name="setup_button_download_mod">Скачать мод</string>
+    <string name="setup_button_choose_installed_mod">Выбрать установленный мод</string>
+    <string name="setup_mod_select_picker_title">Выбор установленного мода</string>
+    <string name="setup_mod_no_installed">Установленные моды не найдены. Сначала скачайте мод или выберите папку с модом.</string>
+    <string name="setup_mod_selected_toast">Выбран мод: %1$s</string>
+    <string name="setup_mod_selection_hint">Выберите установленный мод</string>
+    <string name="setup_mod_archive_count">архивов</string>
+    <string name="setup_mod_external_suffix">внешняя папка</string>
+    <string name="setup_mod_mode_overlay">Режим: мод-дополнение поверх основной игры</string>
+    <string name="setup_mod_mode_standalone">Режим: отдельная папка мода</string>
+    <string name="setup_mod_storage_unavailable">Внешнее хранилище недоступно: не удалось создать папку Mods.</string>
+    <string name="setup_mod_download_picker_title">Скачать мод</string>
+    <string name="setup_mod_download_checking">Подключение к каталогу и проверка размера файлов…</string>
+    <string name="setup_mod_download_progress_title">Загрузка %1$s</string>
+    <string name="setup_mod_download_failed_title">Не удалось загрузить мод</string>
+    <string name="setup_mod_download_confirmation">%1$d файлов, всего %2$s. Файлы размещены на общедоступном сервере проекта GenLauncher, а не Waru Edition. Сервер сейчас использует незашифрованный HTTP; размер файлов и доступные контрольные суммы MD5 проверяются, но это не равно HTTPS. Используйте Wi-Fi и загружайте только из источника, которому доверяете.</string>
+    <string name="setup_mod_download_size_title">Скачать %1$s?</string>
+    <string name="setup_mod_download_button">Скачать %1$s</string>
+    <string name="setup_mod_download_installed">Мод загружен и выбран. Перед запуском убедитесь, что установлены файлы основной игры.</string>
+    <string name="setup_mod_download_complete_title">Загрузка мода завершена</string>
+    <string name="setup_mod_download_selected">Мод выбран. Нажмите «Запустить мод», чтобы начать игру.</string>
+    <string name="setup_mod_download_missing_archives">Сервер вернул файлы, но архивы .big или .gib не найдены. Мод не выбран; проверьте каталог или установите мод вручную.</string>
+
 </resources>

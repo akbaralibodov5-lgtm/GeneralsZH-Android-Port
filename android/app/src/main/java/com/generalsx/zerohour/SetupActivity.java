@@ -50,11 +50,16 @@ import android.text.style.UnderlineSpan;
 import android.view.ContextThemeWrapper;
 import android.view.Menu;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -73,11 +78,45 @@ import com.google.android.material.textfield.TextInputLayout;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.io.File;
+import java.io.InputStream;
+import java.io.FileOutputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public class SetupActivity extends Activity {
 
     static final String PREFS_NAME = "generalszh_setup";
     static final String PREF_GAME_PATH = "game_path";
+    // WARU Edition isolated optional mod profile.
+    static final String PREF_MOD_PATH = "mod_path";
+    static final String PREF_MOD_MODE = "mod_mode";
+    static final String MOD_MODE_STANDALONE = "standalone";
+    static final String MOD_MODE_OVERLAY = "overlay";
+    private static final String MOD_MARKER_NAME = "gamedata_mod_path.txt";
+    private static final int REQUEST_PICK_MOD_FOLDER = 1004;
+    private static final int REQUEST_IMPORT_MOD_ZIPS = 1005;
+    private boolean pendingModLaunchAfterRotation = false;
+
+    private static final class ModChoice {
+        final String name;
+        final String path;
+        final boolean overlay;
+        final int archives;
+        ModChoice(String name, String path, boolean overlay, int archives) {
+            this.name = name;
+            this.path = path;
+            this.overlay = overlay;
+            this.archives = archives;
+        }
+    }
+
+    private Spinner modSelectionSpinner;
+    private TextView modSelectionSummary;
+    private final java.util.List<ModChoice> modChoices = new java.util.ArrayList<>();
+    private final WaruModDownloader modDownloader = new WaruModDownloader();
+    private android.app.AlertDialog modDownloadDialog;
+    private TextView modDownloadStatus;
+    private ProgressBar modDownloadProgress;
 
     // GeneralsX @feature Android port 15/09/2026 Simulation tick rate.
     //
@@ -97,7 +136,7 @@ public class SetupActivity extends Activity {
 
     static int getSimHz(android.content.Context ctx) {
         int hz = ctx.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-            .getInt(PREF_SIM_HZ, SIM_HZ_RETAIL);
+            .getInt(PREF_SIM_HZ, SIM_HZ_CROSSPLAY);
         return hz == SIM_HZ_CROSSPLAY ? SIM_HZ_CROSSPLAY : SIM_HZ_RETAIL;
     }
 
@@ -141,6 +180,17 @@ public class SetupActivity extends Activity {
         // Setup -> Launch rotation race that used to be sidestepped by never
         // rotating Setup at all.
         super.onCreate(savedInstanceState);
+        // WARU 1.4.5: migrate existing installs to the PC-compatible 60 Hz
+        // simulation once, while preserving the user's choice on later launches.
+        android.content.SharedPreferences versionPrefs =
+            getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        int seenVersion = versionPrefs.getInt("launcher_version_code_seen", 0);
+        if (seenVersion < 10405) {
+            versionPrefs.edit()
+                .putInt(PREF_SIM_HZ, SIM_HZ_CROSSPLAY)
+                .putInt("launcher_version_code_seen", 10405)
+                .apply();
+        }
         setTitle(R.string.setup_window_title);
 
         // GeneralsX @feature Android port launcher-ui-2026 08/09/2026 Which
@@ -203,6 +253,7 @@ public class SetupActivity extends Activity {
         addPlainButton(root, getString(R.string.setup_button_select_game_folder), this::onSelectGameFolder);
         addPlainButton(root, getString(R.string.setup_button_view_logs), this::onViewLogs);
         addPlainButton(root, getString(R.string.setup_button_launch_game), this::onLaunchGame);
+        addPlainButton(root, getString(R.string.setup_button_launch_mod), this::onLaunchMod);
         addPlainButton(root, getString(R.string.setup_button_clear_game_folder), this::onClearGameFolder);
     }
 
@@ -429,17 +480,24 @@ public class SetupActivity extends Activity {
     // ------------------------------------------------------------ Home page
 
     private void buildHomeSection(LinearLayout page) {
-        // The one thing this app exists to do, as the first thing on it.
-        UiKit.button(page, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_play,
+        // WARU Edition hero: light blue command-center layout matching the reference.
+        LinearLayout hero = UiKit.card(page);
+        UiKit.sectionHeader(hero, R.drawable.ic_gzh_play, getString(R.string.setup_hero_kicker), false);
+        TextView heroTitle = UiKit.body(hero, getString(R.string.setup_hero_title));
+        heroTitle.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 27);
+        heroTitle.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD));
+        TextView heroBody = UiKit.supporting(hero, getString(R.string.setup_hero_subtitle));
+        heroBody.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14);
+        UiKit.button(hero, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_play,
             getString(R.string.setup_button_launch_game), this::onLaunchGame);
+        UiKit.button(hero, UiKit.BTN_TONAL, R.drawable.ic_gzh_play,
+            getString(R.string.setup_button_launch_mod), this::onLaunchMod);
 
         LinearLayout folder = UiKit.card(page);
         UiKit.sectionHeader(folder, R.drawable.ic_gzh_folder,
             getString(R.string.setup_card_game_folder), false);
-
         statusText = UiKit.body(folder, null);
         statusText.setTextIsSelectable(true);
-
         UiKit.button(folder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
             getString(R.string.setup_button_select_game_folder), this::onSelectGameFolder);
         UiKit.button(folder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
@@ -451,10 +509,40 @@ public class SetupActivity extends Activity {
                 getString(R.string.setup_button_clear_base_generals), this::onClearBaseGeneralsFolder);
         }
 
-        // GeneralsX @bugfix Android port 01/08/2026 kept above the advanced
-        // settings -- signing into GeneralsOnline is a primary action most
-        // people want right after picking their game folder, not something to
-        // bury under settings most players never touch.
+        // Mod Files: select an installed catalogue download, or import a mod already on the device.
+        LinearLayout modFolder = UiKit.card(page);
+        UiKit.sectionHeader(modFolder, R.drawable.ic_gzh_folder,
+            getString(R.string.setup_card_mod_files), false);
+        modSelectionSummary = UiKit.supporting(modFolder, modPathSummary());
+        modSelectionSpinner = new Spinner(this);
+        modSelectionSpinner.setBackgroundColor(UiKit.color(this, R.color.gzh_surface_container));
+        modSelectionSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position < 0 || position >= modChoices.size()) return;
+                ModChoice choice = modChoices.get(position);
+                if (choice.path == null) return;
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                    .putString(PREF_MOD_PATH, choice.path)
+                    .putString(PREF_MOD_MODE, choice.overlay ? MOD_MODE_OVERLAY : MOD_MODE_STANDALONE)
+                    .apply();
+                updateModSelectionSummary();
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) { }
+        });
+        modFolder.addView(modSelectionSpinner, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        refreshModChoices();
+        UiKit.button(modFolder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
+            getString(R.string.setup_button_choose_installed_mod), this::showInstalledModPicker);
+        UiKit.button(modFolder, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_download,
+            getString(R.string.setup_button_download_mod), this::showModDownloadPicker);
+        UiKit.button(modFolder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
+            getString(R.string.setup_button_select_mod_folder), this::onSelectModFolder);
+        if (getSavedModPath() != null) {
+            UiKit.button(modFolder, UiKit.BTN_DANGER, R.drawable.ic_gzh_broom,
+                getString(R.string.setup_button_clear_mod_folder), this::onClearModFolder);
+        }
+
         buildGeneralsOnlineSection(page);
         buildUpdatesSection(page);
     }
@@ -3024,6 +3112,7 @@ public class SetupActivity extends Activity {
     }
 
     private static final int REQUEST_LEGACY_STORAGE_PERMISSION = 1003;
+    private boolean pendingLegacyModFolderPermission = false;
 
     private void onSelectGameFolder() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -3058,6 +3147,505 @@ public class SetupActivity extends Activity {
     // must accept the opposite -- a folder with base archives and no *ZH.big.
     private void onSelectBaseGeneralsFolder() {
         startActivityForResult(new Intent(this, FolderPickerActivity.class), REQUEST_PICK_BASE_GENERALS);
+    }
+
+    private String getSavedModPath() {
+        return getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(PREF_MOD_PATH, null);
+    }
+
+    private String getSavedModMode() {
+        String path = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .getString(PREF_MOD_PATH, null);
+        File dir = path == null ? null : new File(path);
+        // A full standalone Reloaded Fire install must never be converted into an
+        // overlay merely because its own archives use the .gib extension.
+        if (isStandaloneModFolder(dir)) return MOD_MODE_STANDALONE;
+        return getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .getString(PREF_MOD_MODE, MOD_MODE_STANDALONE);
+    }
+
+    private static boolean hasGibModArchives(File dir) {
+        if (dir == null || !dir.isDirectory()) return false;
+        File[] files = dir.listFiles((parent, name) ->
+            name != null && name.toLowerCase(java.util.Locale.ROOT).endsWith(".gib"));
+        return files != null && files.length > 0;
+    }
+
+    private static boolean isStandaloneModFolder(File dir) {
+        if (dir == null || !dir.isDirectory()) return false;
+        // Reloaded Fire is distributed as a standalone game tree. These markers
+        // distinguish it from downloadable overlay packs that also use .gib.
+        boolean hasWindowsGameFiles =
+            new File(dir, "game.dat").isFile() || new File(dir, "generals.exe").isFile();
+        File dataIni = new File(dir, "Data/INI");
+        File dataIniLower = new File(dir, "data/ini");
+        boolean hasIniTree = dataIni.isDirectory() || dataIniLower.isDirectory();
+        String folderName = dir.getName().toLowerCase(java.util.Locale.ROOT)
+            .replace(" ", "").replace("_", "").replace("-", "");
+        boolean namedReloadedFire = folderName.contains("reloadedfire");
+        return (hasWindowsGameFiles && hasIniTree) || namedReloadedFire;
+    }
+
+    private static String modeForModFolder(File dir) {
+        if (isStandaloneModFolder(dir)) return MOD_MODE_STANDALONE;
+        return hasGibModArchives(dir) ? MOD_MODE_OVERLAY : MOD_MODE_STANDALONE;
+    }
+
+    private File managedModsRoot() {
+        // Catalogue downloads have a dedicated app-private namespace. Do not
+        // share the old "Mods" directory used by the removed ZIP importer or
+        // any folder the user selects manually from Downloads/Telegram.
+        File root = getExternalFilesDir(null);
+        return root == null ? null : new File(root, "DownloadedMods");
+    }
+
+    private static boolean isModArchiveName(String name) {
+        String lower = name == null ? "" : name.toLowerCase(java.util.Locale.ROOT);
+        return lower.endsWith(".big") || lower.endsWith(".gib");
+    }
+
+    private static int countModArchives(File dir) {
+        if (dir == null || !dir.isDirectory()) return 0;
+        File[] files = dir.listFiles((parent, name) -> isModArchiveName(name));
+        return files == null ? 0 : files.length;
+    }
+
+    private static boolean hasModArchives(File dir) {
+        return countModArchives(dir) > 0;
+    }
+
+    private String modPathSummary() {
+        String path = getSavedModPath();
+        if (path == null) return getString(R.string.setup_mod_path_not_set);
+        File dir = new File(path);
+        if (!dir.isDirectory()) return getString(R.string.setup_mod_path_invalid, path);
+        int count = countModArchives(dir);
+        String mode = MOD_MODE_OVERLAY.equals(getSavedModMode())
+            ? getString(R.string.setup_mod_mode_overlay)
+            : getString(R.string.setup_mod_mode_standalone);
+        return getString(R.string.setup_mod_path_set, path, count) + "\n" + mode;
+    }
+
+    private void updateModSelectionSummary() {
+        if (modSelectionSummary != null) modSelectionSummary.setText(modPathSummary());
+    }
+
+    private void refreshModChoices() {
+        if (modSelectionSpinner == null) return;
+        modChoices.clear();
+        modChoices.add(new ModChoice(getString(R.string.setup_mod_selection_hint), null, false, 0));
+        File root = managedModsRoot();
+        File[] folders = root != null ? root.listFiles() : null;
+        if (folders != null) {
+            java.util.Arrays.sort(folders, java.util.Comparator.comparing(
+                File::getName, String.CASE_INSENSITIVE_ORDER));
+            for (File folder : folders) {
+                if (folder.isDirectory() && hasModArchives(folder)) {
+                    modChoices.add(new ModChoice(folder.getName(), folder.getAbsolutePath(),
+                        MOD_MODE_OVERLAY.equals(modeForModFolder(folder)), countModArchives(folder)));
+                }
+            }
+        }
+        String selectedPath = getSavedModPath();
+        boolean listed = false;
+        for (ModChoice choice : modChoices) {
+            if (choice.path != null && choice.path.equals(selectedPath)) { listed = true; break; }
+        }
+        if (!listed && selectedPath != null) {
+            File selected = new File(selectedPath);
+            if (hasModArchives(selected)) {
+                modChoices.add(new ModChoice(selected.getName() + " — "
+                    + getString(R.string.setup_mod_external_suffix), selected.getAbsolutePath(),
+                    MOD_MODE_OVERLAY.equals(getSavedModMode()), countModArchives(selected)));
+            }
+        }
+        java.util.List<String> labels = new java.util.ArrayList<>();
+        for (int i = 0; i < modChoices.size(); i++) {
+            ModChoice choice = modChoices.get(i);
+            labels.add(i == 0 ? choice.name : choice.name + "  •  " + choice.archives
+                + " " + getString(R.string.setup_mod_archive_count));
+        }
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+            this, android.R.layout.simple_spinner_item, labels) {
+            @Override public View getView(int position, View convertView, ViewGroup parent) {
+                TextView text = (TextView) super.getView(position, convertView, parent);
+                text.setTextColor(UiKit.color(SetupActivity.this, R.color.gzh_on_surface));
+                return text;
+            }
+        };
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        modSelectionSpinner.setAdapter(adapter);
+        int selectedIndex = 0;
+        for (int i = 1; i < modChoices.size(); i++) {
+            if (modChoices.get(i).path.equals(selectedPath)) { selectedIndex = i; break; }
+        }
+        modSelectionSpinner.setSelection(selectedIndex);
+        updateModSelectionSummary();
+    }
+
+    private void onSelectModFolder() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                Toast.makeText(this, R.string.setup_toast_grant_all_files, Toast.LENGTH_LONG).show();
+                try {
+                    Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    startActivity(intent);
+                } catch (Exception e) {
+                    startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+                }
+                return;
+            }
+        } else if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            pendingLegacyModFolderPermission = true;
+            ActivityCompat.requestPermissions(this,
+                new String[] { Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE },
+                REQUEST_LEGACY_STORAGE_PERMISSION);
+            return;
+        }
+        startActivityForResult(new Intent(this, FolderPickerActivity.class), REQUEST_PICK_MOD_FOLDER);
+    }
+
+
+    // Import one or more ZIP parts as a single managed mod. Each selected ZIP is
+    // extracted into the same destination, preserving relative paths; this supports
+    // large mods distributed as separate ZIPs without requiring the user to unpack
+    // them on a PC. ZIP entry paths are validated to prevent zip-slip traversal.
+    private void onImportModZipParts() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/zip");
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {
+            "application/zip", "application/x-zip-compressed", "application/octet-stream"
+        });
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try {
+            startActivityForResult(intent, REQUEST_IMPORT_MOD_ZIPS);
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not open the file picker: " + e.getMessage(),
+                Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void importModZipParts(final Intent result) {
+        final java.util.ArrayList<Uri> uris = new java.util.ArrayList<>();
+        if (result.getClipData() != null) {
+            for (int i = 0; i < result.getClipData().getItemCount(); i++) {
+                Uri uri = result.getClipData().getItemAt(i).getUri();
+                if (uri != null && !uris.contains(uri)) uris.add(uri);
+            }
+        } else if (result.getData() != null) {
+            uris.add(result.getData());
+        }
+        if (uris.isEmpty()) {
+            Toast.makeText(this, "No ZIP files selected.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        final File root = managedModsRoot();
+        if (root == null || (!root.isDirectory() && !root.mkdirs())) {
+            Toast.makeText(this, "Mod storage is unavailable.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        final File destination = new File(root, "Reloaded Fire");
+        final android.app.ProgressDialog progress = new android.app.ProgressDialog(this);
+        progress.setTitle("Importing Reloaded Fire");
+        progress.setMessage("Preparing ZIP parts…");
+        progress.setProgressStyle(android.app.ProgressDialog.STYLE_SPINNER);
+        progress.setCancelable(false);
+        progress.show();
+
+        new Thread(() -> {
+            String error = null;
+            int extractedFiles = 0;
+            long totalBytes = 0L;
+            try {
+                if (!destination.isDirectory() && !destination.mkdirs()) {
+                    throw new java.io.IOException("Could not create mod directory.");
+                }
+                byte[] buffer = new byte[64 * 1024];
+                for (int part = 0; part < uris.size(); part++) {
+                    try (InputStream raw = getContentResolver().openInputStream(uris.get(part))) {
+                        if (raw == null) throw new java.io.IOException("Cannot read selected ZIP part " + (part + 1));
+                        try (ZipInputStream zip = new ZipInputStream(raw)) {
+                            ZipEntry entry;
+                            while ((entry = zip.getNextEntry()) != null) {
+                                String name = entry.getName();
+                                if (name == null || name.isEmpty()) { zip.closeEntry(); continue; }
+                                String normalized = name.replace('\\', '/');
+                                java.io.File relative = new java.io.File(normalized);
+                                if (relative.isAbsolute() || normalized.startsWith("/")
+                                        || normalized.matches("^[A-Za-z]:.*")) {
+                                    throw new java.io.IOException("Unsafe ZIP path: " + name);
+                                }
+                                File output = new File(destination, normalized);
+                                String base = destination.getCanonicalPath() + File.separator;
+                                String canonical = output.getCanonicalPath();
+                                if (!canonical.startsWith(base) && !canonical.equals(destination.getCanonicalPath())) {
+                                    throw new java.io.IOException("ZIP entry escapes mod folder: " + name);
+                                }
+                                if (entry.isDirectory()) {
+                                    if (!output.isDirectory() && !output.mkdirs()) {
+                                        throw new java.io.IOException("Cannot create folder: " + name);
+                                    }
+                                } else {
+                                    File parent = output.getParentFile();
+                                    if (parent == null || (!parent.isDirectory() && !parent.mkdirs())) {
+                                        throw new java.io.IOException("Cannot create parent folder for: " + name);
+                                    }
+                                    try (FileOutputStream out = new FileOutputStream(output, false)) {
+                                        int n;
+                                        while ((n = zip.read(buffer)) != -1) {
+                                            totalBytes += n;
+                                            if (totalBytes > 12L * 1024 * 1024 * 1024) {
+                                                throw new java.io.IOException("ZIP parts expand beyond the 12 GiB safety limit.");
+                                            }
+                                            out.write(buffer, 0, n);
+                                        }
+                                    }
+                                    extractedFiles++;
+                                }
+                                zip.closeEntry();
+                            }
+                        }
+                    }
+                }
+                if (extractedFiles == 0) throw new java.io.IOException("The selected files contained no extractable files.");
+                if (!hasModArchives(destination)) {
+                    throw new java.io.IOException("ZIP parts were extracted, but no .big or .gib mod archives were found at the mod root. This looks like loose game files or a nested archive layout, not a launchable mod package.");
+                }
+            } catch (Exception e) {
+                error = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            }
+            final String finalError = error;
+            final int finalFiles = extractedFiles;
+            final long finalBytes = totalBytes;
+            runOnUiThread(() -> {
+                if (progress.isShowing()) progress.dismiss();
+                if (isFinishing() || isDestroyed()) return;
+                if (finalError != null) {
+                    new android.app.AlertDialog.Builder(SetupActivity.this)
+                        .setTitle("Reloaded Fire import failed")
+                        .setMessage(finalError + "\n\nImported data, if any, remains in:\n" + destination.getAbsolutePath())
+                        .setPositiveButton(R.string.common_cancel, null)
+                        .show();
+                    return;
+                }
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                    .putString(PREF_MOD_PATH, destination.getAbsolutePath())
+                    .putString(PREF_MOD_MODE, modeForModFolder(destination))
+                    .apply();
+                refreshModChoices();
+                showTab(TAB_HOME);
+                new android.app.AlertDialog.Builder(SetupActivity.this)
+                    .setTitle("Reloaded Fire imported")
+                    .setMessage("Extracted " + finalFiles + " files (" + WaruModDownloader.human(finalBytes)
+                        + ") from " + uris.size() + " ZIP part(s).\n\nMod folder:\n"
+                        + destination.getAbsolutePath() + "\n\nThe mod is selected. Launch the game to test it.")
+                    .setPositiveButton(R.string.common_cancel, null)
+                    .show();
+            });
+        }, "ReloadedFireImport").start();
+    }
+
+    private void onClearModFolder() {
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+            .remove(PREF_MOD_PATH).remove(PREF_MOD_MODE).apply();
+        new File(getFilesDir(), MOD_MARKER_NAME).delete();
+        Toast.makeText(this, R.string.setup_toast_mod_folder_cleared, Toast.LENGTH_SHORT).show();
+        showTab(TAB_HOME);
+    }
+
+    private boolean saveModPath(String path) {
+        File dir = path == null ? null : new File(path);
+        if (!hasModArchives(dir)) {
+            Toast.makeText(this, R.string.setup_mod_path_no_archives, Toast.LENGTH_LONG).show();
+            return false;
+        }
+        String canonicalPath;
+        try {
+            canonicalPath = dir.getCanonicalPath();
+        } catch (java.io.IOException e) {
+            canonicalPath = dir.getAbsolutePath();
+        }
+        // Full Reloaded Fire folders are standalone even when their archives
+        // use .gib; only partial archive packs should be launched as overlays.
+        String mode = modeForModFolder(dir);
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+            .putString(PREF_MOD_PATH, canonicalPath)
+            .putString(PREF_MOD_MODE, mode)
+            .apply();
+        refreshModChoices();
+        Toast.makeText(this, R.string.setup_toast_mod_folder_saved, Toast.LENGTH_LONG).show();
+        return true;
+    }
+
+    /**
+     * A clear, explicit chooser for already downloaded/imported mods.
+     * The spinner remains available for quick selection; this button is easier to discover.
+     */
+    private void showInstalledModPicker() {
+        refreshModChoices();
+        if (modChoices.size() <= 1) {
+            new android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.setup_mod_select_picker_title)
+                .setMessage(R.string.setup_mod_no_installed)
+                .setPositiveButton(R.string.setup_button_download_mod,
+                    (dialog, which) -> showModDownloadPicker())
+                .setNegativeButton(R.string.common_cancel, null)
+                .show();
+            return;
+        }
+
+        String[] labels = new String[modChoices.size() - 1];
+        for (int i = 1; i < modChoices.size(); i++) {
+            ModChoice choice = modChoices.get(i);
+            String mode = choice.overlay
+                ? getString(R.string.setup_mod_mode_overlay)
+                : getString(R.string.setup_mod_mode_standalone);
+            labels[i - 1] = choice.name + "  •  " + choice.archives + " "
+                + getString(R.string.setup_mod_archive_count) + "  •  " + mode;
+        }
+
+        new android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.setup_mod_select_picker_title)
+            .setItems(labels, (dialog, which) -> {
+                int index = which + 1;
+                if (index < 1 || index >= modChoices.size()) return;
+                ModChoice choice = modChoices.get(index);
+                if (choice.path == null || !hasModArchives(new File(choice.path))) {
+                    Toast.makeText(this, R.string.setup_mod_path_no_archives, Toast.LENGTH_LONG).show();
+                    refreshModChoices();
+                    return;
+                }
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                    .putString(PREF_MOD_PATH, choice.path)
+                    .putString(PREF_MOD_MODE, choice.overlay ? MOD_MODE_OVERLAY : MOD_MODE_STANDALONE)
+                    .apply();
+                if (modSelectionSpinner != null) modSelectionSpinner.setSelection(index);
+                updateModSelectionSummary();
+                Toast.makeText(this, getString(R.string.setup_mod_selected_toast, choice.name),
+                    Toast.LENGTH_SHORT).show();
+            })
+            .setNegativeButton(R.string.common_cancel, null)
+            .show();
+    }
+
+    private void showModDownloadPicker() {
+        final File root = managedModsRoot();
+        if (root == null) {
+            Toast.makeText(this, R.string.setup_mod_storage_unavailable, Toast.LENGTH_LONG).show();
+            return;
+        }
+        WaruModDownloader.Catalog[] catalogue = WaruModDownloader.CATALOG;
+        String[] labels = new String[catalogue.length];
+        for (int i = 0; i < catalogue.length; i++) labels[i] = catalogue[i].toString();
+        new android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.setup_mod_download_picker_title)
+            .setItems(labels, (dialog, which) -> {
+                WaruModDownloader.Catalog entry = catalogue[which];
+                queryModDownloadSize(entry, new File(root, entry.name));
+            })
+            .setNegativeButton(R.string.common_cancel, null)
+            .show();
+    }
+
+    private void queryModDownloadSize(final WaruModDownloader.Catalog entry, final File destination) {
+        final TextView message = new TextView(this);
+        message.setText(R.string.setup_mod_download_checking);
+        message.setPadding(dp(20), dp(12), dp(20), dp(12));
+        final android.app.AlertDialog waiting = new android.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.setup_mod_download_progress_title, entry.name))
+            .setView(message)
+            .setNegativeButton(R.string.common_cancel, (dialog, which) -> modDownloader.cancel())
+            .create();
+        waiting.setOnCancelListener(dialog -> modDownloader.cancel());
+        waiting.show();
+        modDownloader.querySize(entry, (ok, files, bytes, error) -> {
+            if (isFinishing() || isDestroyed()) return;
+            if (waiting.isShowing()) waiting.dismiss();
+            if (!ok) {
+                new android.app.AlertDialog.Builder(this)
+                    .setTitle(R.string.setup_mod_download_failed_title)
+                    .setMessage(error)
+                    .setPositiveButton(R.string.common_cancel, null)
+                    .show();
+                return;
+            }
+            String size = WaruModDownloader.human(bytes);
+            String confirmation = getString(R.string.setup_mod_download_confirmation, files, size, entry.name);
+            new android.app.AlertDialog.Builder(this)
+                .setTitle(getString(R.string.setup_mod_download_size_title, entry.name))
+                .setMessage(confirmation)
+                .setPositiveButton(getString(R.string.setup_mod_download_button, size),
+                    (dialog, which) -> beginModDownload(entry, destination))
+                .setNegativeButton(R.string.common_cancel, null)
+                .show();
+        });
+    }
+
+    private void beginModDownload(final WaruModDownloader.Catalog entry, final File destination) {
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(20), dp(12), dp(20), dp(12));
+        modDownloadStatus = new TextView(this);
+        modDownloadStatus.setText(R.string.setup_mod_download_checking);
+        content.addView(modDownloadStatus, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        modDownloadProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        modDownloadProgress.setMax(100);
+        modDownloadProgress.setProgress(0);
+        LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, dp(8));
+        progressParams.topMargin = dp(12);
+        content.addView(modDownloadProgress, progressParams);
+        modDownloadDialog = new android.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.setup_mod_download_progress_title, entry.name))
+            .setView(content)
+            .setNegativeButton(R.string.common_cancel, (dialog, which) -> modDownloader.cancel())
+            .create();
+        modDownloadDialog.setOnCancelListener(dialog -> modDownloader.cancel());
+        modDownloadDialog.show();
+
+        modDownloader.download(entry, destination, new WaruModDownloader.Listener() {
+            @Override public void onProgress(String message, int percent) {
+                if (isFinishing() || isDestroyed()) return;
+                if (modDownloadStatus != null) modDownloadStatus.setText(message);
+                if (modDownloadProgress != null) modDownloadProgress.setProgress(percent);
+            }
+
+            @Override public void onFinished(boolean ok, String message) {
+                if (isFinishing() || isDestroyed()) return;
+                if (modDownloadDialog != null && modDownloadDialog.isShowing()) modDownloadDialog.dismiss();
+                modDownloadDialog = null;
+                modDownloadStatus = null;
+                modDownloadProgress = null;
+
+                if (ok && hasModArchives(destination)) {
+                    getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                        .putString(PREF_MOD_PATH, destination.getAbsolutePath())
+                        .putString(PREF_MOD_MODE, MOD_MODE_OVERLAY)
+                        .apply();
+                    showTab(TAB_HOME);
+                    Toast.makeText(SetupActivity.this, R.string.setup_mod_download_installed,
+                        Toast.LENGTH_LONG).show();
+                    new android.app.AlertDialog.Builder(SetupActivity.this)
+                        .setTitle(R.string.setup_mod_download_complete_title)
+                        .setMessage(message + "\n\n" + getString(R.string.setup_mod_download_selected))
+                        .setPositiveButton(R.string.common_cancel, null)
+                        .show();
+                } else {
+                    String details = ok ? getString(R.string.setup_mod_download_missing_archives) : message;
+                    new android.app.AlertDialog.Builder(SetupActivity.this)
+                        .setTitle(R.string.setup_mod_download_failed_title)
+                        .setMessage(details)
+                        .setPositiveButton(R.string.common_cancel, null)
+                        .show();
+                }
+            }
+        });
     }
 
     private void onClearBaseGeneralsFolder() {
@@ -3097,7 +3685,12 @@ public class SetupActivity extends Activity {
         if (requestCode == REQUEST_LEGACY_STORAGE_PERMISSION) {
             boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
             if (granted) {
-                startActivityForResult(new Intent(this, FolderPickerActivity.class), 1001);
+                if (pendingLegacyModFolderPermission) {
+                    pendingLegacyModFolderPermission = false;
+                    startActivityForResult(new Intent(this, FolderPickerActivity.class), REQUEST_PICK_MOD_FOLDER);
+                } else {
+                    startActivityForResult(new Intent(this, FolderPickerActivity.class), 1001);
+                }
             } else if (!ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_EXTERNAL_STORAGE)) {
                 // GeneralsX @bugfix Android port 24/09/2026 Issue #22: after "Don't ask again" the
                 // system denies without showing a prompt, so retrying from here can never work.
@@ -3147,6 +3740,12 @@ public class SetupActivity extends Activity {
                     }
                 }
             }
+        } else if (requestCode == REQUEST_PICK_MOD_FOLDER && resultCode == Activity.RESULT_OK && data != null) {
+            String path = data.getStringExtra(FolderPickerActivity.EXTRA_SELECTED_PATH);
+            if (path != null && saveModPath(path)) {
+            refreshModChoices();
+            showTab(TAB_HOME);
+        }
         } else if (requestCode == REQUEST_PICK_BASE_GENERALS && resultCode == Activity.RESULT_OK && data != null) {
             String path = data.getStringExtra(FolderPickerActivity.EXTRA_SELECTED_PATH);
             if (path != null) {
@@ -3168,6 +3767,8 @@ public class SetupActivity extends Activity {
                     showTab(TAB_HOME);
                 }
             }
+        } else if (requestCode == REQUEST_IMPORT_MOD_ZIPS && resultCode == Activity.RESULT_OK && data != null) {
+            importModZipParts(data);
         } else if (requestCode == REQUEST_IMPORT_DRIVER && resultCode == Activity.RESULT_OK && data != null) {
             Uri uri = data.getData();
             if (uri != null) {
@@ -3360,21 +3961,74 @@ public class SetupActivity extends Activity {
     // rotated the phone), there's nothing to wait for.
     private boolean pendingLaunchAfterRotation = false;
 
-    private void onLaunchGame() {
-        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            startActivity(new Intent(this, GeneralsZHActivity.class));
+    private void onLaunchGame() { launchGame(false); }
+
+    private void onLaunchMod() {
+        // Re-read the persisted selection so this button always launches the item chosen in the Mod Files card.
+        String path = getSavedModPath();
+        File dir = path == null ? null : new File(path);
+        if (!hasModArchives(dir)) {
+            new android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.setup_mod_folder_required_title)
+                .setMessage(R.string.setup_mod_folder_required_message)
+                .setNegativeButton(R.string.common_cancel, null)
+                .setPositiveButton(R.string.setup_button_select_mod_folder, (dialog, which) -> onSelectModFolder())
+                .show();
             return;
         }
-        pendingLaunchAfterRotation = true;
+        launchGame(true);
+    }
+
+    private void launchGame(boolean mod) {
+        if (mod) {
+            // Persist the resolved mode before GeneralsZHActivity reads raw
+            // SharedPreferences. This also repairs older installs where a
+            // standalone Reloaded Fire folder was previously saved as overlay.
+            String resolvedMode = getSavedModMode();
+            getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                .putString(PREF_MOD_MODE, resolvedMode)
+                .apply();
+            if (MOD_MODE_OVERLAY.equals(resolvedMode)) {
+                // A partial catalogue mod overlays the selected game data using -mod.
+                // Do not switch the current working directory into the partial mod folder.
+                new File(getFilesDir(), MOD_MARKER_NAME).delete();
+            } else {
+                String path = getSavedModPath();
+                try (java.io.FileWriter w = new java.io.FileWriter(new File(getFilesDir(), MOD_MARKER_NAME), false)) {
+                    w.write(new File(path).getCanonicalPath());
+                    w.write("\n");
+                } catch (java.io.IOException e) {
+                    Toast.makeText(this, getString(R.string.setup_toast_marker_save_failed, e.getMessage()), Toast.LENGTH_LONG).show();
+                    return;
+                }
+            }
+        } else {
+            new File(getFilesDir(), MOD_MARKER_NAME).delete();
+        }
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            startRequestedGameActivity(mod);
+            return;
+        }
+        pendingLaunchAfterRotation = !mod;
+        pendingModLaunchAfterRotation = mod;
         setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+    }
+
+    private void startRequestedGameActivity(boolean mod) {
+        Intent intent = new Intent(this, GeneralsZHActivity.class);
+        intent.putExtra(GeneralsZHActivity.EXTRA_LAUNCH_MOD, mod);
+        startActivity(intent);
     }
 
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        if (pendingLaunchAfterRotation && newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+        if ((pendingLaunchAfterRotation || pendingModLaunchAfterRotation)
+                && newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            boolean mod = pendingModLaunchAfterRotation;
             pendingLaunchAfterRotation = false;
-            startActivity(new Intent(this, GeneralsZHActivity.class));
+            pendingModLaunchAfterRotation = false;
+            startRequestedGameActivity(mod);
         }
     }
 

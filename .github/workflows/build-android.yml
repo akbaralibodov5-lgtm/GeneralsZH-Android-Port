@@ -15,17 +15,27 @@ permissions:
   # one) drops every unlisted scope to none rather than defaulting to read.
   actions: write
 
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
-  # GeneralsX @bugfix Android CI 01/08/2026 dropped the push: trigger that
-  # used to fire a full CI build on every push to main/claude/** touching
-  # these paths. This session's actual dev loop builds and checksum-verifies
-  # locally (scripts/build/android/build-local-sandboxed.sh) before ever
-  # pushing, and pushes to BOTH main and the working branch on every commit
-  # (main is kept fast-forwarded) -- so every commit was silently kicking off
-  # two full ~15min CI builds nobody was looking at, burning real Actions
-  # usage for zero benefit. pull_request/workflow_dispatch (manual runs,
-  # including the "publish a Release" path) are unaffected and still work
-  # exactly as before.
+  # Run Android CI for source changes pushed to main.
+  push:
+    branches:
+      - main
+    paths:
+      - 'GeneralsMD/**'
+      - 'Core/**'
+      - 'Dependencies/**'
+      - 'cmake/**'
+      - 'android/**'
+      - 'scripts/build/android/**'
+      - 'Patches/**'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
+      - 'vcpkg.json'
+      - '.github/workflows/build-android.yml'
   pull_request:
     branches:
       - main
@@ -278,7 +288,7 @@ jobs:
       # and run #2 sailed straight past a fatal configure error into "success"
       # — exactly the pipeline-masking failure the porting playbook warns
       # about. The Verify step caught it; now the failing step reports itself.
-      - name: Configure CMake (Android)
+      - name: Configure CMake (Android, 60 Hz)
         run: |
           set -o pipefail
           mkdir -p logs
@@ -286,22 +296,37 @@ jobs:
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DANDROID_CI_BUILD_NUMBER=${{ github.run_number }} \
-            2>&1 | tee logs/configure_android.log
+            -DSAGE_HIGH_FPS_SIM=ON \
+            2>&1 | tee logs/configure_android_60hz.log
 
-      - name: Build z_generals (libmain.so) + DXVK d3d8/d3d9
+      - name: Build z_generals (60 Hz) + DXVK d3d8/d3d9
         run: |
           set -o pipefail
-          mkdir -p logs
-          # ninja -k 0: keep going past failures so ONE run surfaces every
-          # cross-compile error in the 1.6M-LOC engine instead of one per
-          # round-trip; the exit code still fails the step when anything broke.
-          # main_hook/file_redirect_hook/gsl_alloc_hook/hook_impl
-          # (cmake/adrenotools.cmake): dlopen()'d by path at runtime, not a
-          # link-time dependency of z_generals, so a targeted build skips them
-          # unless named explicitly -- package-android-zh.sh's jniLibs staging
-          # requires all four to already exist.
-          cmake --build build/${{ env.PRESET }} --target z_generals dxvk_d3d8_install \
-            main_hook file_redirect_hook gsl_alloc_hook hook_impl -- -k 0 2>&1 | tee logs/build_android.log
+          cmake --build build/${{ env.PRESET }} --target z_generals dxvk_d3d8_install main_hook file_redirect_hook gsl_alloc_hook hook_impl -- -k 0 2>&1 | tee logs/build_android_60hz.log
+          ccache --show-stats
+
+      - name: Save 60 Hz engine
+        run: |
+          set -euo pipefail
+          SRC="build/${{ env.PRESET }}/GeneralsMD/Code/Main/libmain.so"
+          DST="build/libmain60.so"
+          test -s "${SRC}"
+          cp "${SRC}" "${DST}"
+
+      - name: Configure CMake (Android, 30 Hz)
+        run: |
+          set -o pipefail
+          cmake --preset ${{ env.PRESET }} \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DANDROID_CI_BUILD_NUMBER=${{ github.run_number }} \
+            -DSAGE_HIGH_FPS_SIM=OFF \
+            2>&1 | tee logs/configure_android_30hz.log
+
+      - name: Build z_generals (30 Hz) + DXVK d3d8/d3d9
+        run: |
+          set -o pipefail
+          cmake --build build/${{ env.PRESET }} --target z_generals dxvk_d3d8_install main_hook file_redirect_hook gsl_alloc_hook hook_impl -- -k 0 2>&1 | tee logs/build_android_30hz.log
           ccache --show-stats
 
       - name: Verify artifacts
@@ -321,7 +346,9 @@ jobs:
           # own OUTPUT_NAME (GeneralsMD/Code/Main/CMakeLists.txt) makes the
           # real path deterministic, so use it directly instead of searching.
           GAME_LIB="build/${{ env.PRESET }}/GeneralsMD/Code/Main/libmain.so"
+          GAME_LIB60="build/libmain60.so"
           if [ ! -f "$GAME_LIB" ]; then echo "::error::libmain.so not found at $GAME_LIB"; exit 1; fi
+          if [ ! -f "$GAME_LIB60" ]; then echo "::error::libmain60.so not found at $GAME_LIB60"; exit 1; fi
           # GeneralsX @bugfix Android port 31/07/2026 - the deterministic
           # OUTPUT_NAME path above (13/07/2026 fix) stopped `head -1` from
           # grabbing the wrong file, but the readelf check itself still
@@ -334,21 +361,16 @@ jobs:
           # to a process started microseconds later. Retry a few times with
           # a short sleep before failing for real; a genuinely wrong-arch
           # binary will still fail every attempt and correctly error out.
-          READELF_OK=0
-          for attempt in 1 2 3 4 5; do
-            if "$READELF" -h "$GAME_LIB" 2>/dev/null | grep -q AArch64; then
-              READELF_OK=1
-              break
-            fi
-            sleep 1
+          for game_lib in "$GAME_LIB" "$GAME_LIB60"; do
+            readelf_out="$("$READELF" -h "$game_lib")"
+            grep -q AArch64 <<< "$readelf_out" || { echo "::error::$(basename "$game_lib") is not AArch64"; exit 1; }
           done
-          [ "$READELF_OK" = "1" ] || { echo "::error::libmain.so is not AArch64"; exit 1; }
           for lib in libdxvk_d3d8.so libdxvk_d3d9.so; do
             [ -f "build/${{ env.PRESET }}/$lib" ] || { echo "::error::$lib missing"; exit 1; }
           done
           strings "build/${{ env.PRESET }}/libdxvk_d3d9.so" | grep -q Sdl3WsiDriver || {
-            echo "::error::libdxvk_d3d9.so built without the SDL3 WSI (silent fallback)"; exit 1; }
-          echo "Artifacts verified: AArch64 libmain.so + DXVK with SDL3 WSI"
+            echo "::error::libdxvk_d3d9.so built without the SDL3 WSI"; exit 1; }
+          echo "Artifacts verified: AArch64 libmain.so (30 Hz) + libmain60.so (60 Hz) + DXVK with SDL3 WSI"
 
       # GeneralsX @feature Android CI 06/09/2026 The strip step below is what
       # keeps the APK at ~42MB instead of ~118MB, but it also destroys the one
@@ -363,34 +385,27 @@ jobs:
       # investigations actually used. The program headers travel with it so the
       # vaddr-vs-file-offset bias (the +0x1000 one, rediscovered by hand more
       # than once) is written down next to the symbols it applies to.
-      - name: Collect symbol table (before stripping)
+      - name: Collect symbol tables (30 Hz + 60 Hz, before stripping)
         run: |
-          set -e
+          set -euo pipefail
           TOOLS="$(dirname "$(ls "${ANDROID_NDK_HOME}"/toolchains/llvm/prebuilt/*/bin/llvm-nm | head -1)")"
-          LIB="build/${{ env.PRESET }}/GeneralsMD/Code/Main/libmain.so"
           mkdir -p symbols
-          OUT="symbols/libmain-run${{ github.run_number }}.symbols.txt"
-          BUILD_ID="$(readelf -n "$LIB" 2>/dev/null | sed -n 's/.*Build ID: \([0-9a-f]*\).*/\1/p' | head -1)"
-          {
-            echo "# libmain.so symbols -- run ${{ github.run_number }}, commit ${{ github.sha }}"
-            echo "# Match this BuildID against the tombstone's before trusting any address."
-            # llvm-readelf --notes prints the note's header but not the build-id
-            # value itself, so pull it out with GNU readelf, which does.
-            echo "# BuildID: ${BUILD_ID:-UNKNOWN}"
-            "$TOOLS/llvm-readelf" --notes --program-headers "$LIB"
-            echo "# --- defined symbols: address size type name ---"
-            "$TOOLS/llvm-nm" --defined-only --numeric-sort --print-size --demangle "$LIB"
-          } > "$OUT"
-          # A table that came out empty (wrong path, or a library that was
-          # already stripped upstream of here) is worse than no table: it
-          # would ship attached to a Release looking authoritative. Say so.
-          SYMS=$("$TOOLS/llvm-nm" --defined-only "$LIB" 2>/dev/null | wc -l)
-          echo "Symbols captured: ${SYMS}"
-          if [ "${SYMS}" -lt 1000 ]; then
-            echo "::warning::libmain.so yielded only ${SYMS} symbols -- crash logs from this build will not symbolize."
-          fi
-          gzip -9 "$OUT"
-          ls -la symbols/
+          for pair in "30:build/${{ env.PRESET }}/GeneralsMD/Code/Main/libmain.so" "60:build/libmain60.so"; do
+            hz="${pair%%:*}"
+            LIB="${pair#*:}"
+            OUT="symbols/libmain-${hz}hz-run${{ github.run_number }}.symbols.txt"
+            BUILD_ID="$(readelf -n "$LIB" 2>/dev/null | sed -n 's/.*Build ID: \([0-9a-f]*\).*/\1/p' | head -1)"
+            {
+              echo "# libmain.so symbols -- ${hz} Hz -- run ${{ github.run_number }}, commit ${{ github.sha }}"
+              echo "# BuildID: ${BUILD_ID:-UNKNOWN}"
+              "$TOOLS/llvm-readelf" --notes --program-headers "$LIB"
+              echo "# --- defined symbols: address size type name ---"
+              "$TOOLS/llvm-nm" --defined-only --numeric-sort --print-size --demangle "$LIB"
+            } > "$OUT"
+            SYMS=$("$TOOLS/llvm-nm" --defined-only "$LIB" 2>/dev/null | wc -l)
+            echo "${hz} Hz symbols captured: ${SYMS}"
+            gzip -9 "$OUT"
+          done
 
       # GeneralsX @bugfix Android CI 06/08/2026 CI never stripped debug
       # symbols, so every uploaded artifact/Release asset shipped a fully
@@ -409,6 +424,7 @@ jobs:
         run: |
           STRIP="$(ls "${ANDROID_NDK_HOME}"/toolchains/llvm/prebuilt/*/bin/llvm-strip | head -1)"
           for lib in "build/${{ env.PRESET }}/GeneralsMD/Code/Main/libmain.so" \
+                     "build/libmain60.so" \
                      "build/${{ env.PRESET }}/_deps/sdl3-build/libSDL3.so" \
                      "build/${{ env.PRESET }}/_deps/sdl3_image-build/libSDL3_image.so" \
                      "build/${{ env.PRESET }}/_deps/openal_soft-build/libopenal.so" \
@@ -446,6 +462,7 @@ jobs:
           GX_ANDROID_STAGING: ${{ github.workspace }}/android-staging
           GX_ANDROID_VERSION_CODE: ${{ steps.artifact.outputs.version_code }}
           GX_ANDROID_VERSION_NAME: ${{ steps.artifact.outputs.version_name }}
+          GX_SECOND_GAME_LIB: ${{ github.workspace }}/build/libmain60.so
         run: |
           ./scripts/build/android/package-android-zh.sh
 
@@ -456,6 +473,17 @@ jobs:
           if [ ! -f "$APK" ]; then echo "::error::APK not found at $APK"; exit 1; fi
           cp "$APK" "${{ steps.artifact.outputs.apk_name }}"
           echo "path=${{ steps.artifact.outputs.apk_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify APK contains both simulation engines
+        run: |
+          set -euo pipefail
+          APK="${{ steps.locate.outputs.path }}"
+          WORKDIR="$(mktemp -d)"
+          unzip -q "${APK}" 'lib/arm64-v8a/*' -d "${WORKDIR}"
+          test -s "${WORKDIR}/lib/arm64-v8a/libmain.so" || { echo "::error::APK missing libmain.so (30 Hz)"; exit 1; }
+          test -s "${WORKDIR}/lib/arm64-v8a/libmain60.so" || { echo "::error::APK missing libmain60.so (60 Hz)"; exit 1; }
+          echo "OK: APK contains both libmain.so (30 Hz) and libmain60.so (60 Hz)."
+          rm -rf "${WORKDIR}"
 
       # GeneralsX @bugfix Android CI 07/07/2026 A real device caught what CI
       # missed: run #10's APK was missing libgamespy.so (a genuine DT_NEEDED
@@ -550,7 +578,8 @@ jobs:
           body: ${{ inputs.release_notes }}
           files: |
             ${{ steps.locate.outputs.path }}
-            symbols/libmain-run${{ github.run_number }}.symbols.txt.gz
+            symbols/libmain-30hz-run${{ github.run_number }}.symbols.txt.gz
+            symbols/libmain-60hz-run${{ github.run_number }}.symbols.txt.gz
           generate_release_notes: true
           make_latest: true
 
