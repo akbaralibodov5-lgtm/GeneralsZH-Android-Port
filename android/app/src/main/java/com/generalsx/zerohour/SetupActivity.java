@@ -3340,7 +3340,7 @@ public class SetupActivity extends Activity {
                             while ((entry = zip.getNextEntry()) != null) {
                                 String name = entry.getName();
                                 if (name == null || name.isEmpty()) { zip.closeEntry(); continue; }
-                                String normalized = name.replace('\\\\', '/');
+                                String normalized = name.replace('\\', '/');
                                 java.io.File relative = new java.io.File(normalized);
                                 if (relative.isAbsolute() || normalized.startsWith("/")
                                         || normalized.matches("^[A-Za-z]:.*")) {
@@ -3394,7 +3394,7 @@ public class SetupActivity extends Activity {
                 if (finalError != null) {
                     new android.app.AlertDialog.Builder(SetupActivity.this)
                         .setTitle("Reloaded Fire import failed")
-                        .setMessage(finalError + "\\n\\nImported data, if any, remains in:\\n" + destination.getAbsolutePath())
+                        .setMessage(finalError + "\n\nImported data, if any, remains in:\n" + destination.getAbsolutePath())
                         .setPositiveButton(R.string.common_cancel, null)
                         .show();
                     return;
@@ -3408,8 +3408,8 @@ public class SetupActivity extends Activity {
                 new android.app.AlertDialog.Builder(SetupActivity.this)
                     .setTitle("Reloaded Fire imported")
                     .setMessage("Extracted " + finalFiles + " files (" + WaruModDownloader.human(finalBytes)
-                        + ") from " + uris.size() + " ZIP part(s).\\n\\nMod folder:\\n"
-                        + destination.getAbsolutePath() + "\\n\\nThe mod is selected. Launch the game to test it.")
+                        + ") from " + uris.size() + " ZIP part(s).\n\nMod folder:\n"
+                        + destination.getAbsolutePath() + "\n\nThe mod is selected. Launch the game to test it.")
                     .setPositiveButton(R.string.common_cancel, null)
                     .show();
             });
