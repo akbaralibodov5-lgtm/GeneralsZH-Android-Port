@@ -282,12 +282,21 @@ static Bool tryLoadBigFiles(TBigFileSystem* fileSystem, const AsciiString& direc
 	}
 
 	DEBUG_LOG(("StdBIGFileSystem::init - trying '%s' assets directory: %s", sourceTag, directory.str()));
-	const Bool loaded = fileSystem->loadBigFilesFromDirectory(directory, "*.big", overwrite);
-	if (loaded) {
-		DEBUG_LOG(("StdBIGFileSystem::init - loaded BIG files from %s (%s)", directory.str(), sourceTag));
+	const Bool loadedBig = fileSystem->loadBigFilesFromDirectory(directory, "*.big", overwrite);
+	// Reloaded Fire is a standalone game distribution whose primary archives may
+	// use the .gib suffix. .gib uses the same BIGF archive format, but the retail
+	// asset-root scan only looked for *.big; without this pass the engine reports
+	// that no primary assets were loaded and exits with the generic serious-error
+	// dialog before the game can reach its menu. Load .big first, then .gib with
+	// overwrite enabled so the standalone mod's own archives take precedence.
+	const Bool loadedGib = fileSystem->loadBigFilesFromDirectory(directory, "*.gib", TRUE);
+	if (loadedBig || loadedGib) {
+		DEBUG_LOG(("StdBIGFileSystem::init - loaded %s assets from %s (%s)",
+			loadedBig && loadedGib ? "BIG/GIB" : (loadedGib ? "GIB" : "BIG"),
+			directory.str(), sourceTag));
 	}
 
-	return loaded;
+	return loadedBig || loadedGib;
 }
 
 static Bool tryResolveFromIni(const AsciiString& exeDirectory, const char* keyName, AsciiString& resolvedPath)
@@ -411,8 +420,11 @@ static Bool loadPrimaryGameAssets(TBigFileSystem* fileSystem, AsciiString* loade
 	}
 
 	DEBUG_LOG(("StdBIGFileSystem::init - trying current working directory as last-resort assets path"));
-	if (fileSystem->loadBigFilesFromDirectory("", "*.big")) {
-		fprintf(stderr, "[ASSET_ROOT] Selected source=current-working-directory\n");
+	const Bool loadedCwdBig = fileSystem->loadBigFilesFromDirectory("", "*.big");
+	const Bool loadedCwdGib = fileSystem->loadBigFilesFromDirectory("", "*.gib", TRUE);
+	if (loadedCwdBig || loadedCwdGib) {
+		fprintf(stderr, "[ASSET_ROOT] Selected source=current-working-directory (%s)\n",
+			loadedCwdBig && loadedCwdGib ? "BIG/GIB" : (loadedCwdGib ? "GIB" : "BIG"));
 		if (loadedDirectory != nullptr) {
 			*loadedDirectory = AsciiString::TheEmptyString;
 		}
