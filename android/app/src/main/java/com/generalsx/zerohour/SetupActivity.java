@@ -78,6 +78,10 @@ import com.google.android.material.textfield.TextInputLayout;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.io.File;
+import java.io.InputStream;
+import java.io.FileOutputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public class SetupActivity extends Activity {
 
@@ -90,6 +94,7 @@ public class SetupActivity extends Activity {
     static final String MOD_MODE_OVERLAY = "overlay";
     private static final String MOD_MARKER_NAME = "gamedata_mod_path.txt";
     private static final int REQUEST_PICK_MOD_FOLDER = 1004;
+    private static final int REQUEST_IMPORT_MOD_ZIPS = 1005;
     private boolean pendingModLaunchAfterRotation = false;
 
     private static final class ModChoice {
@@ -533,6 +538,8 @@ public class SetupActivity extends Activity {
             getString(R.string.setup_button_download_mod), this::showModDownloadPicker);
         UiKit.button(modFolder, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
             getString(R.string.setup_button_select_mod_folder), this::onSelectModFolder);
+        UiKit.button(modFolder, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_folder,
+            "Import Reloaded Fire ZIP parts…", this::onImportModZipParts);
         if (getSavedModPath() != null) {
             UiKit.button(modFolder, UiKit.BTN_DANGER, R.drawable.ic_gzh_broom,
                 getString(R.string.setup_button_clear_mod_folder), this::onClearModFolder);
@@ -3266,6 +3273,149 @@ public class SetupActivity extends Activity {
         startActivityForResult(new Intent(this, FolderPickerActivity.class), REQUEST_PICK_MOD_FOLDER);
     }
 
+
+    // Import one or more ZIP parts as a single managed mod. Each selected ZIP is
+    // extracted into the same destination, preserving relative paths; this supports
+    // large mods distributed as separate ZIPs without requiring the user to unpack
+    // them on a PC. ZIP entry paths are validated to prevent zip-slip traversal.
+    private void onImportModZipParts() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/zip");
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {
+            "application/zip", "application/x-zip-compressed", "application/octet-stream"
+        });
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try {
+            startActivityForResult(intent, REQUEST_IMPORT_MOD_ZIPS);
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not open the file picker: " + e.getMessage(),
+                Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void importModZipParts(final Intent result) {
+        final java.util.ArrayList<Uri> uris = new java.util.ArrayList<>();
+        if (result.getClipData() != null) {
+            for (int i = 0; i < result.getClipData().getItemCount(); i++) {
+                Uri uri = result.getClipData().getItemAt(i).getUri();
+                if (uri != null && !uris.contains(uri)) uris.add(uri);
+            }
+        } else if (result.getData() != null) {
+            uris.add(result.getData());
+        }
+        if (uris.isEmpty()) {
+            Toast.makeText(this, "No ZIP files selected.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        final File root = managedModsRoot();
+        if (root == null || (!root.isDirectory() && !root.mkdirs())) {
+            Toast.makeText(this, "Mod storage is unavailable.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        final File destination = new File(root, "Reloaded Fire");
+        final android.app.ProgressDialog progress = new android.app.ProgressDialog(this);
+        progress.setTitle("Importing Reloaded Fire");
+        progress.setMessage("Preparing ZIP parts…");
+        progress.setProgressStyle(android.app.ProgressDialog.STYLE_SPINNER);
+        progress.setCancelable(false);
+        progress.show();
+
+        new Thread(() -> {
+            String error = null;
+            int extractedFiles = 0;
+            long totalBytes = 0L;
+            try {
+                if (!destination.isDirectory() && !destination.mkdirs()) {
+                    throw new java.io.IOException("Could not create mod directory.");
+                }
+                byte[] buffer = new byte[64 * 1024];
+                for (int part = 0; part < uris.size(); part++) {
+                    try (InputStream raw = getContentResolver().openInputStream(uris.get(part))) {
+                        if (raw == null) throw new java.io.IOException("Cannot read selected ZIP part " + (part + 1));
+                        try (ZipInputStream zip = new ZipInputStream(raw)) {
+                            ZipEntry entry;
+                            while ((entry = zip.getNextEntry()) != null) {
+                                String name = entry.getName();
+                                if (name == null || name.isEmpty()) { zip.closeEntry(); continue; }
+                                String normalized = name.replace('\\\\', '/');
+                                java.io.File relative = new java.io.File(normalized);
+                                if (relative.isAbsolute() || normalized.startsWith("/")
+                                        || normalized.matches("^[A-Za-z]:.*")) {
+                                    throw new java.io.IOException("Unsafe ZIP path: " + name);
+                                }
+                                File output = new File(destination, normalized);
+                                String base = destination.getCanonicalPath() + File.separator;
+                                String canonical = output.getCanonicalPath();
+                                if (!canonical.startsWith(base) && !canonical.equals(destination.getCanonicalPath())) {
+                                    throw new java.io.IOException("ZIP entry escapes mod folder: " + name);
+                                }
+                                if (entry.isDirectory()) {
+                                    if (!output.isDirectory() && !output.mkdirs()) {
+                                        throw new java.io.IOException("Cannot create folder: " + name);
+                                    }
+                                } else {
+                                    File parent = output.getParentFile();
+                                    if (parent == null || (!parent.isDirectory() && !parent.mkdirs())) {
+                                        throw new java.io.IOException("Cannot create parent folder for: " + name);
+                                    }
+                                    try (FileOutputStream out = new FileOutputStream(output, false)) {
+                                        int n;
+                                        while ((n = zip.read(buffer)) != -1) {
+                                            totalBytes += n;
+                                            if (totalBytes > 12L * 1024 * 1024 * 1024) {
+                                                throw new java.io.IOException("ZIP parts expand beyond the 12 GiB safety limit.");
+                                            }
+                                            out.write(buffer, 0, n);
+                                        }
+                                    }
+                                    extractedFiles++;
+                                }
+                                zip.closeEntry();
+                            }
+                        }
+                    }
+                }
+                if (extractedFiles == 0) throw new java.io.IOException("The selected files contained no extractable files.");
+                if (!hasModArchives(destination)) {
+                    throw new java.io.IOException("ZIP parts were extracted, but no .big or .gib mod archives were found at the mod root. This looks like loose game files or a nested archive layout, not a launchable mod package.");
+                }
+            } catch (Exception e) {
+                error = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            }
+            final String finalError = error;
+            final int finalFiles = extractedFiles;
+            final long finalBytes = totalBytes;
+            runOnUiThread(() -> {
+                if (progress.isShowing()) progress.dismiss();
+                if (isFinishing() || isDestroyed()) return;
+                if (finalError != null) {
+                    new android.app.AlertDialog.Builder(SetupActivity.this)
+                        .setTitle("Reloaded Fire import failed")
+                        .setMessage(finalError + "\\n\\nImported data, if any, remains in:\\n" + destination.getAbsolutePath())
+                        .setPositiveButton(R.string.common_cancel, null)
+                        .show();
+                    return;
+                }
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                    .putString(PREF_MOD_PATH, destination.getAbsolutePath())
+                    .putString(PREF_MOD_MODE, MOD_MODE_OVERLAY)
+                    .apply();
+                refreshModChoices();
+                showTab(TAB_HOME);
+                new android.app.AlertDialog.Builder(SetupActivity.this)
+                    .setTitle("Reloaded Fire imported")
+                    .setMessage("Extracted " + finalFiles + " files (" + WaruModDownloader.human(finalBytes)
+                        + ") from " + uris.size() + " ZIP part(s).\\n\\nMod folder:\\n"
+                        + destination.getAbsolutePath() + "\\n\\nThe mod is selected. Launch the game to test it.")
+                    .setPositiveButton(R.string.common_cancel, null)
+                    .show();
+            });
+        }, "ReloadedFireImport").start();
+    }
+
     private void onClearModFolder() {
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
             .remove(PREF_MOD_PATH).remove(PREF_MOD_MODE).apply();
@@ -3580,6 +3730,8 @@ public class SetupActivity extends Activity {
                     showTab(TAB_HOME);
                 }
             }
+        } else if (requestCode == REQUEST_IMPORT_MOD_ZIPS && resultCode == Activity.RESULT_OK && data != null) {
+            importModZipParts(data);
         } else if (requestCode == REQUEST_IMPORT_DRIVER && resultCode == Activity.RESULT_OK && data != null) {
             Uri uri = data.getData();
             if (uri != null) {
