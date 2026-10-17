@@ -3156,8 +3156,27 @@ public class SetupActivity extends Activity {
     }
 
     private String getSavedModMode() {
-        return getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        String saved = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
             .getString(PREF_MOD_MODE, MOD_MODE_STANDALONE);
+        // GenLauncher Reloaded Fire packages its mod archives as .gib files.
+        // These are overlay archives, not a complete Zero Hour install: launching
+        // them as a standalone working directory omits the base game assets and
+        // can produce the engine's generic "Technical Difficulties" crash.
+        // Infer the safe launch mode from the archive type, including for folders
+        // selected before this fix, so users do not have to import the mod again.
+        String path = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .getString(PREF_MOD_PATH, null);
+        if (hasGibModArchives(path == null ? null : new File(path))) {
+            return MOD_MODE_OVERLAY;
+        }
+        return saved;
+    }
+
+    private static boolean hasGibModArchives(File dir) {
+        if (dir == null || !dir.isDirectory()) return false;
+        File[] files = dir.listFiles((parent, name) ->
+            name != null && name.toLowerCase(java.util.Locale.ROOT).endsWith(".gib"));
+        return files != null && files.length > 0;
     }
 
     private File managedModsRoot() {
@@ -3436,9 +3455,12 @@ public class SetupActivity extends Activity {
         } catch (java.io.IOException e) {
             canonicalPath = dir.getAbsolutePath();
         }
+        // .gib packages (including Reloaded Fire) are partial overlay mods;
+        // retain the base Zero Hour game path and pass this folder via -mod.
+        String mode = hasGibModArchives(dir) ? MOD_MODE_OVERLAY : MOD_MODE_STANDALONE;
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
             .putString(PREF_MOD_PATH, canonicalPath)
-            .putString(PREF_MOD_MODE, MOD_MODE_STANDALONE)
+            .putString(PREF_MOD_MODE, mode)
             .apply();
         refreshModChoices();
         Toast.makeText(this, R.string.setup_toast_mod_folder_saved, Toast.LENGTH_LONG).show();
