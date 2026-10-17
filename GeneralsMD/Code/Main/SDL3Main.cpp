@@ -797,14 +797,13 @@ int main(int argc, char* argv[])
 					if (len > 0) {
 						if (chdir(customPath) == 0) {
 							didChdir = true;
-							if (fromModMarker) {
-								// Standalone mod folders are their own complete game-data
-								// root. Make the archive scanner use this path explicitly;
-								// relying on CWD as a last resort can select stale/default
-								// assets before the mod's own archives are considered.
-								setenv("CNC_GENERALS_ZH_PATH", customPath, 1);
-								fprintf(stderr, "INFO: Android standalone mod asset root: %s\n", customPath);
-							}
+							// The selected working directory is also the primary asset root.
+							// Set this for both normal game launches and standalone mods so a
+							// previous mod launch cannot leave a stale asset-root environment
+							// value behind in the still-loaded Android process.
+							setenv("CNC_GENERALS_ZH_PATH", customPath, 1);
+							fprintf(stderr, "INFO: Android selected asset root (%s): %s\n",
+							        fromModMarker ? "mod" : "game", customPath);
 							fprintf(stderr, "INFO: Android working directory (%s): %s\n",
 							        fromModMarker ? "Mod-selected" : "Setup-selected", customPath);
 						} else {
