@@ -3156,20 +3156,14 @@ public class SetupActivity extends Activity {
     }
 
     private String getSavedModMode() {
-        String saved = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-            .getString(PREF_MOD_MODE, MOD_MODE_STANDALONE);
-        // GenLauncher Reloaded Fire packages its mod archives as .gib files.
-        // These are overlay archives, not a complete Zero Hour install: launching
-        // them as a standalone working directory omits the base game assets and
-        // can produce the engine's generic "Technical Difficulties" crash.
-        // Infer the safe launch mode from the archive type, including for folders
-        // selected before this fix, so users do not have to import the mod again.
         String path = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
             .getString(PREF_MOD_PATH, null);
-        if (hasGibModArchives(path == null ? null : new File(path))) {
-            return MOD_MODE_OVERLAY;
-        }
-        return saved;
+        File dir = path == null ? null : new File(path);
+        // A full standalone Reloaded Fire install must never be converted into an
+        // overlay merely because its own archives use the .gib extension.
+        if (isStandaloneModFolder(dir)) return MOD_MODE_STANDALONE;
+        return getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .getString(PREF_MOD_MODE, MOD_MODE_STANDALONE);
     }
 
     private static boolean hasGibModArchives(File dir) {
@@ -3177,6 +3171,26 @@ public class SetupActivity extends Activity {
         File[] files = dir.listFiles((parent, name) ->
             name != null && name.toLowerCase(java.util.Locale.ROOT).endsWith(".gib"));
         return files != null && files.length > 0;
+    }
+
+    private static boolean isStandaloneModFolder(File dir) {
+        if (dir == null || !dir.isDirectory()) return false;
+        // Reloaded Fire is distributed as a standalone game tree. These markers
+        // distinguish it from downloadable overlay packs that also use .gib.
+        boolean hasWindowsGameFiles =
+            new File(dir, "game.dat").isFile() || new File(dir, "generals.exe").isFile();
+        File dataIni = new File(dir, "Data/INI");
+        File dataIniLower = new File(dir, "data/ini");
+        boolean hasIniTree = dataIni.isDirectory() || dataIniLower.isDirectory();
+        String folderName = dir.getName().toLowerCase(java.util.Locale.ROOT)
+            .replace(" ", "").replace("_", "").replace("-", "");
+        boolean namedReloadedFire = folderName.contains("reloadedfire");
+        return (hasWindowsGameFiles && hasIniTree) || namedReloadedFire;
+    }
+
+    private static String modeForModFolder(File dir) {
+        if (isStandaloneModFolder(dir)) return MOD_MODE_STANDALONE;
+        return hasGibModArchives(dir) ? MOD_MODE_OVERLAY : MOD_MODE_STANDALONE;
     }
 
     private File managedModsRoot() {
@@ -3227,7 +3241,7 @@ public class SetupActivity extends Activity {
             for (File folder : folders) {
                 if (folder.isDirectory() && hasModArchives(folder)) {
                     modChoices.add(new ModChoice(folder.getName(), folder.getAbsolutePath(),
-                        true, countModArchives(folder)));
+                        MOD_MODE_OVERLAY.equals(modeForModFolder(folder)), countModArchives(folder)));
                 }
             }
         }
@@ -3420,7 +3434,7 @@ public class SetupActivity extends Activity {
                 }
                 getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
                     .putString(PREF_MOD_PATH, destination.getAbsolutePath())
-                    .putString(PREF_MOD_MODE, MOD_MODE_OVERLAY)
+                    .putString(PREF_MOD_MODE, modeForModFolder(destination))
                     .apply();
                 refreshModChoices();
                 showTab(TAB_HOME);
@@ -3455,9 +3469,9 @@ public class SetupActivity extends Activity {
         } catch (java.io.IOException e) {
             canonicalPath = dir.getAbsolutePath();
         }
-        // .gib packages (including Reloaded Fire) are partial overlay mods;
-        // retain the base Zero Hour game path and pass this folder via -mod.
-        String mode = hasGibModArchives(dir) ? MOD_MODE_OVERLAY : MOD_MODE_STANDALONE;
+        // Full Reloaded Fire folders are standalone even when their archives
+        // use .gib; only partial archive packs should be launched as overlays.
+        String mode = modeForModFolder(dir);
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
             .putString(PREF_MOD_PATH, canonicalPath)
             .putString(PREF_MOD_MODE, mode)
