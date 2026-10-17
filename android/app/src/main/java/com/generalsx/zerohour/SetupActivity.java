@@ -3980,7 +3980,14 @@ public class SetupActivity extends Activity {
 
     private void launchGame(boolean mod) {
         if (mod) {
-            if (MOD_MODE_OVERLAY.equals(getSavedModMode())) {
+            // Persist the resolved mode before GeneralsZHActivity reads raw
+            // SharedPreferences. This also repairs older installs where a
+            // standalone Reloaded Fire folder was previously saved as overlay.
+            String resolvedMode = getSavedModMode();
+            getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                .putString(PREF_MOD_MODE, resolvedMode)
+                .apply();
+            if (MOD_MODE_OVERLAY.equals(resolvedMode)) {
                 // A partial catalogue mod overlays the selected game data using -mod.
                 // Do not switch the current working directory into the partial mod folder.
                 new File(getFilesDir(), MOD_MARKER_NAME).delete();
