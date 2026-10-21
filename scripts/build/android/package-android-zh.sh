@@ -234,6 +234,12 @@ fi
 
 # --- 3. runtime assets -------------------------------------------------------
 mkdir -p "${ASSETS}"
+# Bundle the support card so a fresh install has the intended links before the
+# signed OTA settings branch is republished. SupportLinks compares the revision
+# here with the signed remote copy and selects whichever is newer.
+SUPPORT_ASSET="${ANDROID_DIR}/app/src/main/assets/support.json"
+cp "${PROJECT_ROOT}/update/support.json" "${SUPPORT_ASSET}"
+echo "Bundled support links asset: ${SUPPORT_ASSET}"
 
 # Fonts (Liberation, renamed to the Windows names the game requests).
 if [[ ! -f "${STAGING}/fonts/arial.ttf" ]]; then
