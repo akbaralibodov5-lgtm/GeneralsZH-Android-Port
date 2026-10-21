@@ -35,6 +35,7 @@ on:
       - 'Dependencies/**'
       - 'cmake/**'
       - 'android/**'
+      - 'update/**'
       - 'scripts/build/android/**'
       - 'Patches/**'
       - 'CMakeLists.txt'
