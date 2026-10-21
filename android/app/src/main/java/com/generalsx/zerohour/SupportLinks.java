@@ -131,12 +131,11 @@ final class SupportLinks {
 
     /** The card's content in the launcher's language, or null when there is nothing to show. */
     static SupportLinks load(Context ctx) {
-        File file = new File(UpdateManager.updateDir(ctx), FILE_NAME);
-        if (!file.isFile()) {
-            return null;
-        }
         try {
-            JSONObject root = new JSONObject(readText(file));
+            JSONObject root = bestAvailableRoot(ctx);
+            if (root == null) {
+                return null;
+            }
             Locale locale = launcherLocale(ctx);
             JSONObject text = root.optJSONObject("text");
             if (text == null) {
@@ -180,6 +179,49 @@ final class SupportLinks {
             android.util.Log.w("GXSupport", "support.json unreadable", e);
             return null;
         }
+    }
+
+    /**
+     * Prefer the highest support revision from the signed OTA settings or the APK's bundled
+     * fallback. The bundled file makes the support page available on first launch and keeps the
+     * intended links in a new APK even when the upstream OTA branch still serves an older card.
+     * Every OTA change must increase "revision" to replace the bundled copy.
+     */
+    private static JSONObject bestAvailableRoot(Context ctx) {
+        JSONObject bundled = null;
+        JSONObject remote = null;
+        try (InputStream in = ctx.getAssets().open(FILE_NAME)) {
+            bundled = new JSONObject(new String(readAll(in), StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            android.util.Log.w("GXSupport", "bundled support.json unavailable", e);
+        }
+        File file = new File(UpdateManager.updateDir(ctx), FILE_NAME);
+        if (file.isFile()) {
+            try {
+                remote = new JSONObject(readText(file));
+            } catch (Exception e) {
+                android.util.Log.w("GXSupport", "OTA support.json unreadable; trying bundled fallback", e);
+            }
+        }
+        if (bundled == null) {
+            return remote;
+        }
+        if (remote == null) {
+            return bundled;
+        }
+        int bundledRevision = bundled.optInt("revision", 0);
+        int remoteRevision = remote.optInt("revision", 0);
+        return remoteRevision >= bundledRevision ? remote : bundled;
+    }
+
+    private static byte[] readAll(InputStream in) throws IOException {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int count;
+        while ((count = in.read(buffer)) != -1) {
+            out.write(buffer, 0, count);
+        }
+        return out.toByteArray();
     }
 
     /** A text that is either a plain string or { tag: string } by language. */
