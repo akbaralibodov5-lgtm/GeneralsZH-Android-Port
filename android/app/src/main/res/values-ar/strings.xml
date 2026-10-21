@@ -381,11 +381,11 @@
     <string name="setup_switch_camera_high_desc">يمكن إبعاد الكاميرا حتى أربعة أضعاف ما تسمح به الخريطة.</string>
     <string name="setup_control_scheme_help">يسري عند تشغيل اللعبة في المرة القادمة. يعمل في المناوشات والحملة والألعاب عبر الإنترنت على حد سواء: يتغير فقط أسلوب إصدار الأوامر، لا قواعد اللعبة.</string>
     <string name="setup_appearance_title">مظهر التطبيق</string>
-    <string name="setup_appearance_standard">قياسي</string>
-    <string name="setup_appearance_navy">كحلي</string>
+    <string name="setup_appearance_standard">أزرق Waru</string>
+    <string name="setup_appearance_navy">ذهبي منتصف الليل</string>
     <string name="setup_appearance_system">النظام</string>
-    <string name="setup_appearance_light">نهاري</string>
-    <string name="setup_appearance_help">يغيّر المشغّل فقط. القياسي هو المظهر الداكن المعتاد؛ الكحلي أزرق داكن مع ذهبي؛ النهاري فاتح؛ النظام يتبع الهاتف (نهاري في الوضع الفاتح، وقياسي في الداكن). لا تتغير رسومات اللعبة.</string>
+    <string name="setup_appearance_light">بلاتيني</string>
+    <string name="setup_appearance_help">تؤثر لوحات ألوان Waru Edition على المشغّل فقط. الأزرق والذهبي يجمعان الكحلي والأزرق الكهربائي والذهبي الهادئ؛ منتصف الليل يضيف درجات داكنة وذهبية؛ البلاتيني فاتح بلمسات زرقاء وشامبانيا. يتبع النظام مظهر الهاتف. لا تتغير رسومات اللعبة.</string>
     <string name="setup_cursor_size_label">حجم المؤشر: %1$d%%</string>
     <string name="setup_switch_skip_intro">تخطي مقاطع المقدمة</string>
     <string name="setup_switch_skip_intro_desc">تُتخطى شعارات EA والمقدمة والمقاطع الأخرى قبل القائمة، وتبدأ اللعبة التحميل مباشرة. للعبتين، ومع التعديلات أيضًا.</string>
