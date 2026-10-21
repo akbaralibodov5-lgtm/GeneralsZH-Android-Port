@@ -385,7 +385,7 @@
     <string name="setup_appearance_navy">ذهبي منتصف الليل</string>
     <string name="setup_appearance_system">النظام</string>
     <string name="setup_appearance_light">بلاتيني</string>
-    <string name="setup_appearance_help">تؤثر لوحات ألوان Waru Edition على المشغّل فقط. الأزرق والذهبي يجمعان الكحلي والأزرق الكهربائي والذهبي الهادئ؛ منتصف الليل يضيف درجات داكنة وذهبية؛ البلاتيني فاتح بلمسات زرقاء وشامبانيا. يتبع النظام مظهر الهاتف. لا تتغير رسومات اللعبة.</string>
+    <string name="setup_appearance_help">تؤثر لوحات Waru Edition على المشغّل فقط. يجمع الأزرق بين الكحلي والأزرق الكهربائي والذهبي الهادئ؛ يستخدم ذهبي منتصف الليل درجات داكنة ولمسات ذهبية؛ والبلاتيني فاتح بتفاصيل زرقاء وذهبية. يتبع النظام مظهر الهاتف. لا تتغير رسومات اللعبة.</string>
     <string name="setup_cursor_size_label">حجم المؤشر: %1$d%%</string>
     <string name="setup_switch_skip_intro">تخطي مقاطع المقدمة</string>
     <string name="setup_switch_skip_intro_desc">تُتخطى شعارات EA والمقدمة والمقاطع الأخرى قبل القائمة، وتبدأ اللعبة التحميل مباشرة. للعبتين، ومع التعديلات أيضًا.</string>
@@ -504,4 +504,7 @@
     <string name="setup_sources_zh_art_missing">لا يحتوي مجلد Zero Hour على TexturesZH.big، لذا لا يستطيع Generals أخذ الصور منه: %1$s</string>
     <string name="setup_sources_base_ok">أرشيفات Generals الأصلية من أجل Zero Hour: %1$s</string>
     <string name="setup_sources_base_auto">يبحث Zero Hour عن أرشيفات Generals الأصلية داخل مجلده (ZH_Generals) أو بجانبه؛ إن كانت في مكان آخر فاختر مجلداً أدناه.</string>
+    <string name="waru_brand_overline" translatable="false">COMMAND &amp; CONQUER • MOBILE EDITION</string>
+    <string name="waru_brand_title" translatable="false">Waru Edition</string>
+    <string name="waru_brand_edition" translatable="false">BLUE • GOLD • BATTLE READY</string>
 </resources>
