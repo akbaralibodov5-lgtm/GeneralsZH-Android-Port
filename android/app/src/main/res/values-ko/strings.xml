@@ -385,7 +385,7 @@
     <string name="setup_appearance_navy">미드나이트 골드</string>
     <string name="setup_appearance_system">시스템</string>
     <string name="setup_appearance_light">플래티넘</string>
-    <string name="setup_appearance_help">Waru Edition 색상 테마는 런처에만 적용됩니다. Waru 블루는 네이비·일렉트릭 블루·은은한 골드를, 미드나이트 골드는 더 깊은 어두운 표면과 골드 포인트를, 플래티넘은 밝은 배경과 블루·샴페인 골드를 사용합니다. 시스템은 휴대폰 테마를 따릅니다. 게임 그래픽은 바뀌지 않습니다.</string>
+    <string name="setup_appearance_help">Waru Edition 색상 테마는 런처에만 적용됩니다. Waru 블루는 네이비·일렉트릭 블루·은은한 골드를, 미드나이트 골드는 깊은 어두운 표면과 골드 포인트를, 플래티넘은 밝은 배경과 블루·샴페인 골드를 사용합니다. 시스템은 휴대폰 테마를 따릅니다. 게임 그래픽은 바뀌지 않습니다.</string>
     <string name="setup_cursor_size_label">커서 크기: %1$d%%</string>
     <string name="setup_switch_skip_intro">인트로 영상 건너뛰기</string>
     <string name="setup_switch_skip_intro_desc">EA 로고, 인트로 및 메뉴 전 다른 영상을 건너뛰고 바로 로딩합니다. 두 게임 모두, 모드 포함.</string>
@@ -504,4 +504,7 @@
     <string name="setup_sources_zh_art_missing">Zero Hour 폴더에 TexturesZH.big이 없어 Generals가 그림을 가져올 수 없습니다: %1$s</string>
     <string name="setup_sources_base_ok">Zero Hour용 원본 Generals 아카이브: %1$s</string>
     <string name="setup_sources_base_auto">Zero Hour는 원본 Generals 아카이브를 자기 폴더(ZH_Generals)나 그 옆에서 찾습니다. 다른 곳에 있다면 아래에서 폴더를 선택하세요.</string>
+    <string name="waru_brand_overline" translatable="false">COMMAND &amp; CONQUER • MOBILE EDITION</string>
+    <string name="waru_brand_title" translatable="false">Waru Edition</string>
+    <string name="waru_brand_edition" translatable="false">BLUE • GOLD • BATTLE READY</string>
 </resources>
