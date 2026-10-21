@@ -51,7 +51,7 @@ on:
         default: android-vulkan
       version_name:
         type: string
-        description: "Override versionName (e.g. 1.2.0). Leave blank to use the committed default (android/app/build.gradle)."
+        description: "Override versionName (e.g. 1.4.5.1). Leave blank to use the committed default (android/app/build.gradle)."
         default: ""
       version_code:
         type: string
