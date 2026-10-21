@@ -383,11 +383,11 @@
     <string name="setup_switch_camera_high_desc">Камеру можно отдалить до четырёх раз дальше, чем позволяет карта.</string>
     <string name="setup_control_scheme_help">Применяется при следующем запуске игры. Работает и в схватке, и в кампании, и в сетевых играх: меняется только то, как вы отдаёте приказы, а не правила игры.</string>
     <string name="setup_appearance_title">Оформление</string>
-    <string name="setup_appearance_standard">Стандартное</string>
-    <string name="setup_appearance_navy">Сине-золотое</string>
-    <string name="setup_appearance_system">Как в системе</string>
-    <string name="setup_appearance_light">Дневное</string>
-    <string name="setup_appearance_help">Меняется только лаунчер. Стандартное — привычное тёмное оформление; Сине-золотое — тёмно-синее с золотом; Дневное — светлое; Как в системе — по настройке телефона (днём Дневное, ночью Стандартное). Графика игры не меняется.</string>
+    <string name="setup_appearance_standard">Waru Blue</string>
+    <string name="setup_appearance_navy">Midnight Gold</string>
+    <string name="setup_appearance_system">Система</string>
+    <string name="setup_appearance_light">Платина</string>
+    <string name="setup_appearance_help">Палитры Waru Edition меняют только лаунчер. Waru Blue сочетает тёмно-синий, электрический синий и мягкое золото; Midnight Gold добавляет глубокие тёмные поверхности и насыщенные золотые акценты; Платина — светлая тема с синими и золотисто-шампанскими деталями. Система следует теме телефона. Графика игры не меняется.</string>
     <string name="setup_cursor_size_label">Размер курсора: %1$d%%</string>
     <string name="setup_switch_skip_intro">Пропускать заставки</string>
     <string name="setup_switch_skip_intro_desc">Логотипы EA, вступительное видео и другие ролики перед меню не показываются — игра сразу переходит к загрузке. Для обеих игр, и с модами тоже.</string>
@@ -506,4 +506,7 @@
     <string name="setup_sources_zh_art_missing">В папке Zero Hour нет TexturesZH.big, поэтому Generals не может взять оттуда картинки: %1$s</string>
     <string name="setup_sources_base_ok">Архивы оригинальной Generals для Zero Hour: %1$s</string>
     <string name="setup_sources_base_auto">Zero Hour ищет архивы оригинальной Generals в своей папке (ZH_Generals) или рядом с ней; если они в другом месте, выберите папку ниже.</string>
+    <string name="waru_brand_overline" translatable="false">COMMAND &amp; CONQUER • MOBILE EDITION</string>
+    <string name="waru_brand_title" translatable="false">Waru Edition</string>
+    <string name="waru_brand_edition" translatable="false">BLUE • GOLD • BATTLE READY</string>
 </resources>
