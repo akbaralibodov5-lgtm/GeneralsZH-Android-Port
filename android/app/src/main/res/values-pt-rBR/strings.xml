@@ -381,11 +381,11 @@
     <string name="setup_switch_camera_high_desc">A câmera se afasta até quatro vezes mais do que o mapa permite.</string>
     <string name="setup_control_scheme_help">Vale a partir da próxima vez que o jogo for iniciado. Funciona igualmente em escaramuças, na campanha e em partidas online: muda apenas como você dá as ordens, não as regras do jogo.</string>
     <string name="setup_appearance_title">Aparência</string>
-    <string name="setup_appearance_standard">Azul Waru</string>
-    <string name="setup_appearance_navy">Ouro da Meia-Noite</string>
-    <string name="setup_appearance_system">Sistema</string>
-    <string name="setup_appearance_light">Platina</string>
-    <string name="setup_appearance_help">As paletas Waru Edition alteram apenas o launcher. Azul Waru combina azul-marinho, azul elétrico e dourado suave; Ouro da Meia-Noite usa superfícies escuras e detalhes dourados; Platina é clara com toques azuis e dourado champanhe. Sistema segue o tema do celular. O jogo não muda.</string>
+    <string name="setup_appearance_standard">Vermelho Carmesim</string>
+    <string name="setup_appearance_navy">Azul Waru</string>
+    <string name="setup_appearance_system">Ouro Real</string>
+    <string name="setup_appearance_light">Prata</string>
+    <string name="setup_appearance_help">Escolha uma das quatro paletas do launcher Waru Edition: vermelho carmesim, azul elétrico Waru, ouro real em superfícies escuras ou prata platina. Os temas alteram apenas o launcher; os gráficos do jogo permanecem iguais.</string>
     <string name="setup_cursor_size_label">Tamanho do cursor: %1$d%%</string>
     <string name="setup_switch_skip_intro">Pular vídeos de introdução</string>
     <string name="setup_switch_skip_intro_desc">Logos da EA, a introdução e outros vídeos antes do menu são pulados; o jogo carrega direto. Para os dois jogos, com mods também.</string>
