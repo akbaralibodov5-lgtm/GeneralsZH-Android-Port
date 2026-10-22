@@ -29,6 +29,7 @@ on:
   pull_request:
     branches:
       - main
+      - feat/waru-blue-gold-launcher
     paths:
       - 'GeneralsMD/**'
       - 'Core/**'
