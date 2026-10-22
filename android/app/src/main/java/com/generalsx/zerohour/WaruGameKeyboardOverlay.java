@@ -69,8 +69,8 @@ final class WaruGameKeyboardOverlay extends View {
     private float bodyH(){ return headerH()+stride()*4+dp(4)*scale; }
     private float left(){ return clamp(anchorX,0,1)*Math.max(0,getWidth()-totalW()); }
     private float top(){ return clamp(anchorY,0,1)*Math.max(0,getHeight()-totalH()); }
-    private float totalW(){ return collapsed||!enabled?dp(48):bodyW(); }
-    private float totalH(){ return collapsed||!enabled?dp(48):bodyH(); }
+    private float totalW(){ return !enabled?dp(48):collapsed?dp(160):bodyW(); }
+    private float totalH(){ return !enabled?dp(48):collapsed?dp(76):bodyH(); }
 
     @Override protected void onDraw(Canvas c){
         super.onDraw(c);
@@ -80,7 +80,17 @@ final class WaruGameKeyboardOverlay extends View {
             return;
         }
         if(collapsed){
-            drawButton(c,new RectF(x,y,x+dp(46),y+dp(46)), "⌨", accent(), true);
+            p.setColor(withAlpha(panel(),opacity));p.setStyle(Paint.Style.FILL);c.drawRoundRect(x,y,x+dp(160),y+dp(76),dp(9),dp(9),p);
+            p.setColor(withAlpha(accent(),Math.min(1,opacity+.2f)));p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(dp(1));c.drawRoundRect(x,y,x+dp(160),y+dp(76),dp(9),dp(9),p);p.setStyle(Paint.Style.FILL);
+            text(c,"WARU MINI",x+dp(7),y+dp(15),dp(9),accent(),true);
+            drawButton(c,new RectF(x+dp(132),y+dp(3),x+dp(155),y+dp(20)),"↗",accent(),false);
+            int[] miniScan={26,4,22,7,82,80,81,79};
+            String[] miniLabel={"W","A","S","D","↑","←","↓","→"};
+            float[][] pos={{28,23},{4,47},{28,47},{52,47},{112,23},{88,47},{112,47},{136,47}};
+            for(int i=0;i<miniScan.length;i++){
+                RectF kr=new RectF(x+dp(pos[i][0]),y+dp(pos[i][1]),x+dp(pos[i][0]+21),y+dp(pos[i][1]+23));
+                drawButton(c,kr,miniLabel[i],pressed.containsValue(miniScan[i])?accent():0,keyInk(pressed.containsValue(miniScan[i])));
+            }
             return;
         }
         float a=opacity;
@@ -159,9 +169,22 @@ final class WaruGameKeyboardOverlay extends View {
     private boolean hit(float x,float y,RectF r){return r.contains(x,y);}
     private int hitKey(float tx,float ty,float x,float y){for(int i=0;i<LABEL.length;i++)if(keyRect(i,x,y).contains(tx,ty))return i;return -1;}
     private void changeTheme(int t){theme=t;save();invalidate();}
+    private int compactKeyAt(float tx,float ty,float x,float y){
+        int[] scans={26,4,22,7,82,80,81,79};
+        float[][] pos={{28,23},{4,47},{28,47},{52,47},{112,23},{88,47},{112,47},{136,47}};
+        for(int i=0;i<scans.length;i++)if(new RectF(x+dp(pos[i][0]),y+dp(pos[i][1]),x+dp(pos[i][0]+21),y+dp(pos[i][1]+23)).contains(tx,ty))return scans[i];
+        return -1;
+    }
     private boolean down(MotionEvent e,int index){
         float tx=e.getX(index),ty=e.getY(index),x=left(),y=top();
-        if(!enabled||collapsed){if(new RectF(x,y,x+dp(48),y+dp(48)).contains(tx,ty)){enabled=true;collapsed=false;save();invalidate();return true;}return false;}
+        if(!enabled){if(new RectF(x,y,x+dp(48),y+dp(48)).contains(tx,ty)){enabled=true;collapsed=false;save();invalidate();return true;}return false;}
+        if(collapsed){
+            if(new RectF(x+dp(128),y,x+dp(160),y+dp(23)).contains(tx,ty)){collapsed=false;save();invalidate();return true;}
+            if(ty>=y&&ty<y+dp(22)){dragPointer=e.getPointerId(index);dragDx=tx-x;dragDy=ty-y;return true;}
+            int scan=compactKeyAt(tx,ty,x,y);
+            if(scan>=0){pressed.put(e.getPointerId(index),scan);GeneralsZHActivity.sendVirtualKey(scan,true);invalidate();return true;}
+            return new RectF(x,y,x+dp(160),y+dp(76)).contains(tx,ty);
+        }
         if(settings){
             RectF r=settingsRect(x,y); if(!r.contains(tx,ty)){settings=false;invalidate();return true;}
             float lx=tx-r.left,ly=ty-r.top;
