@@ -15,34 +15,34 @@
          Java) — only their values were retuned to the new palette. -->
 
     <!-- Ground + surface ladder (M3 surface container roles) -->
-    <color name="gzh_background">#07111F</color>
-    <color name="gzh_surface">#0B1A2B</color>
-    <color name="gzh_surface_container_low">#0D2034</color>
-    <color name="gzh_surface_container">#10263D</color>
-    <color name="gzh_surface_container_high">#16314D</color>
-    <color name="gzh_surface_container_highest">#1D3B5A</color>
+    <color name="gzh_background">#16090D</color>
+    <color name="gzh_surface">#211016</color>
+    <color name="gzh_surface_container_low">#2A1119</color>
+    <color name="gzh_surface_container">#34141E</color>
+    <color name="gzh_surface_container_high">#421824</color>
+    <color name="gzh_surface_container_highest">#54202D</color>
 
     <!-- Content on those surfaces -->
-    <color name="gzh_on_surface">#F5F8FC</color>
-    <color name="gzh_on_surface_variant">#B4C7DC</color>
+    <color name="gzh_on_surface">#FFF6F7</color>
+    <color name="gzh_on_surface_variant">#E4BCC4</color>
     <!-- The faintest tier still has to clear WCAG AA (4.5:1) at 12sp against
          gzh_surface_container, which #7C798C did not (3.9:1). -->
-    <color name="gzh_on_surface_faint">#8FA9C3</color>
-    <color name="gzh_outline">#3B5B79</color>
-    <color name="gzh_outline_variant">#213B55</color>
+    <color name="gzh_on_surface_faint">#C18D98</color>
+    <color name="gzh_outline">#82414F</color>
+    <color name="gzh_outline_variant">#542A35</color>
 
     <!-- Primary: Waru electric blue paired with restrained antique gold (headings, active nav item,
          selected segment, hero action). -->
-    <color name="gzh_primary">#4A9DFF</color>
-    <color name="gzh_on_primary">#061A32</color>
-    <color name="gzh_primary_container">#173F68</color>
-    <color name="gzh_on_primary_container">#D8EBFF</color>
+    <color name="gzh_primary">#FF5364</color>
+    <color name="gzh_on_primary">#33060D</color>
+    <color name="gzh_primary_container">#70202D</color>
+    <color name="gzh_on_primary_container">#FFE0E4</color>
     <!-- Kept for the themes.xml colorPrimaryDark slot (pre-API-23 status bar). -->
-    <color name="gzh_primary_dark">#07111F</color>
+    <color name="gzh_primary_dark">#16090D</color>
     <color name="gzh_accent">#D6A84F</color>
 
     <!-- Secondary: a desaturated companion for tonal chips/containers. -->
-    <color name="gzh_secondary">#D6B46B</color>
+    <color name="gzh_secondary">#D6A84F</color>
     <color name="gzh_on_secondary">#28200E</color>
     <color name="gzh_secondary_container">#4B3A1B</color>
     <color name="gzh_on_secondary_container">#FFE9B5</color>
@@ -62,7 +62,7 @@
     <color name="gzh_on_surface_disabled">#61F5F8FC</color>
     <color name="gzh_container_disabled">#1FF5F8FC</color>
     <color name="gzh_ripple_light">#1FF5F8FC</color>
-    <color name="gzh_ripple_primary">#334A9DFF</color>
+    <color name="gzh_ripple_primary">#33FF5364</color>
 
     <!-- GeneralsX @feature Android port game-folder-integrity-check 07/09/2026
          Semantic status colours for the game-folder validity line (see
@@ -70,5 +70,5 @@
          ground above so they stay legible without shouting. -->
     <color name="gzh_status_ok">#8BE6B3</color>
     <color name="gzh_status_warn">#FFD166</color>
-    <color name="gzh_status_error">#FFB4AB</color>
+    <color name="gzh_status_error">#FF8A96</color>
 </resources>
