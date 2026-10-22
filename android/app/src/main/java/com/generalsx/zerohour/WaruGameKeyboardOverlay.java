@@ -30,7 +30,7 @@ final class WaruGameKeyboardOverlay extends View {
         final float weight;
         Key(String label,int scan,int row,float weight) {
             this.label=label; this.scan=scan; this.row=row; this.weight=weight;
-            this.pref="key_"+label.replaceAll("[^A-Za-z0-9]","_");
+            this.pref="key_scan_"+scan;
         }
     }
     private final ArrayList<Key> keys=new ArrayList<>();
