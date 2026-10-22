@@ -155,6 +155,7 @@ final class WaruGameKeyboardOverlay extends View {
         float w=dp(236),h=dp(118);float sx=Math.max(dp(4),Math.min(x,getWidth()-w-dp(4))),sy=Math.max(dp(4),y-h-dp(8));return new RectF(sx,sy,sx+w,sy+h);
     }
     private void releaseAll(){for(int scan:pressed.values()) GeneralsZHActivity.sendVirtualKey(scan,false);pressed.clear();}
+    void releaseHeldKeys(){ releaseAll(); }
     private boolean hit(float x,float y,RectF r){return r.contains(x,y);}
     private int hitKey(float tx,float ty,float x,float y){for(int i=0;i<LABEL.length;i++)if(keyRect(i,x,y).contains(tx,ty))return i;return -1;}
     private void changeTheme(int t){theme=t;save();invalidate();}
