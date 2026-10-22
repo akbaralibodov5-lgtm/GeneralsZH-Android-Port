@@ -8,7 +8,7 @@ The Android game screen has an optional, translucent PC-style touch keyboard ove
 - Pick one of four palettes: Crimson Red, Waru Blue, Royal Gold, or Silver.
 - Use **− / +** to change keyboard size and opacity.
 - Press and drag the **WARU** title strip to move the keyboard anywhere on the landscape screen.
-- **COMPACT** reduces the controls to a small floating keyboard button; tap it to expand again.
+- **COMPACT** switches to a small playable WASD + arrow pad; tap the expand icon to restore the full keyboard.
 - **HIDE** removes the full keyboard and leaves a small toggle bubble. Tap the bubble to restore the keyboard.
 - **×** also hides the full keyboard; the small bubble remains available.
 - Key presses emit matching key-up events on release/cancel to avoid stuck modifiers.
