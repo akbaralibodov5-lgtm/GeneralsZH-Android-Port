@@ -25,6 +25,7 @@ final class ThemeHelper {
     private static final String PREF_MODE = "launcher_theme_mode";
     private static final android.util.SparseIntArray sNavy = new android.util.SparseIntArray();
     private static final android.util.SparseIntArray sDay = new android.util.SparseIntArray();
+    private static final android.util.SparseIntArray sGold = new android.util.SparseIntArray();
     private ThemeHelper() {}
 
     static int getMode(Context context) {
@@ -41,14 +42,9 @@ final class ThemeHelper {
             .edit().putInt(PREF_MODE, mode).apply();
     }
 
-    /** The palette in use: STANDARD, NAVY or DAY (SYSTEM resolved against the phone). */
+    /** The four fixed Waru palettes: red, blue, silver and gold. */
     static int palette(Context context) {
-        int mode = getMode(context);
-        if (mode != SYSTEM) {
-            return mode;
-        }
-        int night = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        return night == Configuration.UI_MODE_NIGHT_NO ? DAY : STANDARD;
+        return getMode(context);
     }
 
     /** The colour resource to use for a standard gzh_* colour under the chosen palette. */
@@ -57,7 +53,7 @@ final class ThemeHelper {
         if (palette == STANDARD) {
             return colorRes;
         }
-        android.util.SparseIntArray cache = palette == NAVY ? sNavy : sDay;
+        android.util.SparseIntArray cache = palette == NAVY ? sNavy : palette == DAY ? sDay : sGold;
         synchronized (cache) {
             int mapped = cache.get(colorRes, 0);
             if (mapped == 0) {
@@ -65,7 +61,7 @@ final class ThemeHelper {
                 String name = res.getResourceEntryName(colorRes);
                 mapped = colorRes;
                 if (name.startsWith("gzh_")) {
-                    int id = res.getIdentifier((palette == NAVY ? "gzh_navy_" : "gzh_day_")
+                    int id = res.getIdentifier((palette == NAVY ? "gzh_navy_" : palette == DAY ? "gzh_day_" : "gzh_gold_")
                         + name.substring(4), "color", context.getPackageName());
                     if (id != 0) {
                         mapped = id;
@@ -80,7 +76,8 @@ final class ThemeHelper {
     static void apply(Activity activity) {
         int palette = palette(activity);
         activity.setTheme(palette == NAVY ? R.style.Theme_GeneralsZHSettingsNavy
-            : palette == DAY ? R.style.Theme_GeneralsZHSettingsLight : R.style.Theme_GeneralsZHSettings);
+            : palette == DAY ? R.style.Theme_GeneralsZHSettingsLight
+            : palette == SYSTEM ? R.style.Theme_GeneralsZHSettingsGold : R.style.Theme_GeneralsZHSettings);
     }
 
     static void applyBars(Activity activity) {

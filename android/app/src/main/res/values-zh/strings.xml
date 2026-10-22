@@ -381,11 +381,11 @@
     <string name="setup_switch_camera_high_desc">镜头最多可拉远到地图允许高度的四倍。</string>
     <string name="setup_control_scheme_help">下次启动游戏时生效。在遭遇战、战役和联机游戏中同样有效：只改变下达命令的方式，不改变游戏规则。</string>
     <string name="setup_appearance_title">外观</string>
-    <string name="setup_appearance_standard">标准</string>
-    <string name="setup_appearance_navy">藏青</string>
-    <string name="setup_appearance_system">跟随系统</string>
-    <string name="setup_appearance_light">日间</string>
-    <string name="setup_appearance_help">只改变启动器的外观。标准是一贯的深色外观；藏青是深蓝配金色；日间为浅色；跟随系统按手机设置（浅色模式用日间，深色模式用标准）。游戏画面不变。</string>
+    <string name="setup_appearance_standard">绯红</string>
+    <string name="setup_appearance_navy">Waru 蓝</string>
+    <string name="setup_appearance_system">皇家金</string>
+    <string name="setup_appearance_light">银色</string>
+    <string name="setup_appearance_help">选择 Waru Edition 启动器的四种配色之一：绯红、电光 Waru 蓝、深色背景上的皇家金，或铂金银灰。主题只影响启动器，不会改变游戏画面。</string>
     <string name="setup_cursor_size_label">光标大小：%1$d%%</string>
     <string name="setup_switch_skip_intro">跳过开场动画</string>
     <string name="setup_switch_skip_intro_desc">跳过 EA 标志、开场动画和菜单前的其他视频，游戏直接开始加载。适用于两款游戏，包括模组。</string>
@@ -504,4 +504,7 @@
     <string name="setup_sources_zh_art_missing">Zero Hour 文件夹中没有 TexturesZH.big，因此 Generals 无法从中获取图片：%1$s</string>
     <string name="setup_sources_base_ok">供 Zero Hour 使用的原版 Generals 归档：%1$s</string>
     <string name="setup_sources_base_auto">Zero Hour 会在自己的文件夹（ZH_Generals）内或旁边查找原版 Generals 归档；如在别处，请在下方选择文件夹。</string>
+    <string name="waru_brand_overline" translatable="false">COMMAND &amp; CONQUER • MOBILE EDITION</string>
+    <string name="waru_brand_title" translatable="false">Waru Edition</string>
+    <string name="waru_brand_edition" translatable="false">BLUE • GOLD • BATTLE READY</string>
 </resources>

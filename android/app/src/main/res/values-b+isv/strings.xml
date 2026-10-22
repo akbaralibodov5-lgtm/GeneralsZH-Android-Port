@@ -381,11 +381,11 @@
     <string name="setup_switch_camera_high_desc">Kameru možno oddaliti do četyrikrat dalje, než dozvoljaje karta.</string>
     <string name="setup_control_scheme_help">Dějstvuje pri slědujučem zapuskě igry. Rabotaje v bitvě, kampanji i setevyh igrah: měnjaje se jedino to, kako davate prikazy, ne pravila igry.</string>
     <string name="setup_appearance_title">Vygled</string>
-    <string name="setup_appearance_standard">Standardno</string>
-    <string name="setup_appearance_navy">Morsko-zlato</string>
-    <string name="setup_appearance_system">Kako v sistemu</string>
-    <string name="setup_appearance_light">Denno</string>
-    <string name="setup_appearance_help">Měnjaje se jedino launcher. Standardno je običajny tmavy vid; Morsko-zlato je tmavo-sinje so zlatom; Denno je světlo; Kako v sistemu slěduje telefon (Denno pri světlom režimu, Standardno pri tmavom). Grafika igry se ne měnjaje.</string>
+    <string name="setup_appearance_standard">Crimson Red</string>
+    <string name="setup_appearance_navy">Waru Blue</string>
+    <string name="setup_appearance_system">Royal Gold</string>
+    <string name="setup_appearance_light">Silver</string>
+    <string name="setup_appearance_help">Choose one of four Waru Edition launcher palettes: Crimson Red, electric Waru Blue, Royal Gold on deep dark surfaces, or clean platinum Silver. These themes affect only the launcher; game graphics stay unchanged.</string>
     <string name="setup_cursor_size_label">Velikost kursora: %1$d%%</string>
     <string name="setup_switch_skip_intro">Propuščati zastavky</string>
     <string name="setup_switch_skip_intro_desc">Logotipy EA, vstupno video i druge filmy pred menju se ne pokazujut — igra odrazu prěhodi k zagruzkě. Za obě igry, i s modami.</string>
@@ -504,4 +504,7 @@
     <string name="setup_sources_zh_art_missing">V papkě Zero Hour nema TexturesZH.big, zato Generals ne može vzeti odtamtud kartinky: %1$s</string>
     <string name="setup_sources_base_ok">Arhivy originalnoj Generals za Zero Hour: %1$s</string>
     <string name="setup_sources_base_auto">Zero Hour iskaje arhivy originalnoj Generals v svojej papkě (ZH_Generals) ili blizu nej; ako sut drugde, vyberite papku niže.</string>
+    <string name="waru_brand_overline" translatable="false">COMMAND &amp; CONQUER • MOBILE EDITION</string>
+    <string name="waru_brand_title" translatable="false">Waru Edition</string>
+    <string name="waru_brand_edition" translatable="false">BLUE • GOLD • BATTLE READY</string>
 </resources>

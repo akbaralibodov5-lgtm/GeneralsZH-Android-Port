@@ -381,11 +381,11 @@
     <string name="setup_switch_camera_high_desc">Kamerę można oddalić nawet cztery razy dalej, niż pozwala mapa.</string>
     <string name="setup_control_scheme_help">Działa od następnego uruchomienia gry. Działa tak samo w potyczce, kampanii i grach sieciowych: zmienia się tylko sposób wydawania rozkazów, a nie zasady gry.</string>
     <string name="setup_appearance_title">Wygląd</string>
-    <string name="setup_appearance_standard">Standardowy</string>
-    <string name="setup_appearance_navy">Granatowy</string>
-    <string name="setup_appearance_system">Systemowy</string>
-    <string name="setup_appearance_light">Dzienny</string>
-    <string name="setup_appearance_help">Zmienia tylko launcher. Standardowy to zwykły ciemny wygląd; Granatowy to granat ze złotem; Dzienny jest jasny; Systemowy podąża za telefonem (Dzienny przy jasnym trybie, Standardowy przy ciemnym). Grafika gry się nie zmienia.</string>
+    <string name="setup_appearance_standard">Karmazynowa czerwień</string>
+    <string name="setup_appearance_navy">Waru Blue</string>
+    <string name="setup_appearance_system">Królewskie złoto</string>
+    <string name="setup_appearance_light">Srebro</string>
+    <string name="setup_appearance_help">Wybierz jeden z czterech motywów launchera Waru Edition: karmazynową czerwień, elektryczny błękit Waru, królewskie złoto na ciemnym tle lub platynowe srebro. Motywy zmieniają tylko launcher, nie grafikę gry.</string>
     <string name="setup_cursor_size_label">Rozmiar kursora: %1$d%%</string>
     <string name="setup_switch_skip_intro">Pomijaj filmy wprowadzające</string>
     <string name="setup_switch_skip_intro_desc">Logo EA, intro i inne filmy przed menu są pomijane — gra od razu przechodzi do wczytywania. Dla obu gier, także z modami.</string>
@@ -504,4 +504,7 @@
     <string name="setup_sources_zh_art_missing">W folderze Zero Hour nie ma TexturesZH.big, więc Generals nie może wziąć z niego obrazów: %1$s</string>
     <string name="setup_sources_base_ok">Archiwa oryginalnego Generals dla Zero Hour: %1$s</string>
     <string name="setup_sources_base_auto">Zero Hour szuka archiwów oryginalnego Generals w swoim folderze (ZH_Generals) lub obok niego; jeśli są gdzie indziej, wybierz folder poniżej.</string>
+    <string name="waru_brand_overline" translatable="false">COMMAND &amp; CONQUER • MOBILE EDITION</string>
+    <string name="waru_brand_title" translatable="false">Waru Edition</string>
+    <string name="waru_brand_edition" translatable="false">BLUE • GOLD • BATTLE READY</string>
 </resources>
