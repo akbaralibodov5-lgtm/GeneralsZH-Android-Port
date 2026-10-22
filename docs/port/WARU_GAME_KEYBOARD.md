@@ -1,24 +1,22 @@
-# Waru Edition in-game keyboard
+# Waru Edition full PC keyboard overlay
 
-The Android game screen has an optional, translucent PC-style touch keyboard overlay. It feeds SDL3 key-down/key-up events through the same queue used by physical keyboards, so existing engine key bindings remain the source of truth.
+The in-game overlay provides a draggable, translucent PC-style keyboard over the Android SDL game screen. Key presses are forwarded to SDL as key-down and key-up events, so the game's existing input bindings remain authoritative.
 
-## In-game controls
+## Full keyboard
 
-- Tap **⚙** to open the overlay settings.
-- Pick one of four palettes: Crimson Red, Waru Blue, Royal Gold, or Silver.
-- Use **− / +** to change keyboard size and opacity.
-- Press and drag the **WARU** title strip to move the keyboard anywhere on the landscape screen.
-- **COMPACT** switches to a small playable WASD + arrow pad; tap the expand icon to restore the full keyboard.
-- **HIDE** removes the full keyboard and leaves a small toggle bubble. Tap the bubble to restore the keyboard.
-- **×** also hides the full keyboard; the small bubble remains available.
-- Key presses emit matching key-up events on release/cancel to avoid stuck modifiers.
+Includes Escape, F1–F12, Print Screen, Scroll Lock, Pause, the number row and punctuation, Tab, Caps Lock, QWERTY letters, Shift/Ctrl/Alt/Windows/Menu keys, Space, Enter, Backspace, Insert/Home/Page Up/Delete/End/Page Down, arrow keys, and the full numeric keypad.
 
-The selected palette, position, scale, opacity, compact state, and visibility persist in app preferences. The overlay is click-through outside its visible bounds, so battlefield touches continue to reach the game.
+## Controls
 
-## Included keys
+- Drag the WARU header to move the keyboard.
+- Open ⚙ settings to choose Red, Blue, Gold, or Silver; change scale and opacity; and independently toggle every key.
+- Disabled keys are removed from the keyboard layout. Rows reflow and the keyboard width/height shrinks as keys are disabled.
+- Settings are paginated so every key can be switched individually.
+- **–** switches to a compact WASD + arrow pad.
+- **×** hides the full keyboard and leaves a small keyboard toggle; tap it to restore the keyboard.
+- Press and release emits matching SDL key-down/key-up events. All held keys are released on touch cancellation and when the activity pauses.
+- The selected theme, size, opacity, enabled keys, position and visibility are saved in app preferences.
 
-Escape, Tab, Q/W/E/R, 1–5, Ctrl, A/S/D/F/G, Shift, Z/X/C/V, Space, Alt, arrows, and Enter. This is a touch overlay, not a replacement for a physical keyboard; game actions still depend on the game's existing bindings.
+## Validation checklist
 
-## Validation
-
-Build the Android target and test on a real device in a skirmish and multiplayer lobby. In particular verify key down/up, multi-touch modifiers, touch pass-through outside the keyboard, rotation/insets, and no stuck key after app pause.
+Build the Android target and test on a real device. Verify all key labels and scancodes, per-key toggles and reflow, settings pagination, drag boundaries, screen rotation, modifier combinations, touch pass-through outside the visible board, app pause/resume, and multiplayer lobby/game input. A successful CI build is not a substitute for device testing.
