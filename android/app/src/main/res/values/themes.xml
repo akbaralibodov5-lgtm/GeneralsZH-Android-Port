@@ -136,6 +136,59 @@
         <item name="android:textColorAlertDialogListItem">@color/gzh_navy_on_surface</item>
     </style>
 
+    <style name="Theme.GeneralsZHSettingsGold" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/gzh_gold_primary</item>
+        <item name="colorOnPrimary">@color/gzh_gold_on_primary</item>
+        <item name="colorPrimaryContainer">@color/gzh_gold_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/gzh_gold_on_primary_container</item>
+        <item name="colorSecondary">@color/gzh_gold_secondary</item>
+        <item name="colorOnSecondary">@color/gzh_gold_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/gzh_gold_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/gzh_gold_on_secondary_container</item>
+        <item name="colorTertiary">@color/gzh_gold_tertiary</item>
+        <item name="colorOnTertiary">@color/gzh_gold_on_tertiary</item>
+        <item name="colorTertiaryContainer">@color/gzh_gold_tertiary_container</item>
+        <item name="colorOnTertiaryContainer">@color/gzh_gold_on_tertiary_container</item>
+        <item name="colorError">@color/gzh_gold_error</item>
+        <item name="colorOnError">@color/gzh_gold_on_error</item>
+        <item name="colorErrorContainer">@color/gzh_gold_error_container</item>
+        <item name="colorOnErrorContainer">@color/gzh_gold_on_error_container</item>
+        <item name="colorSurface">@color/gzh_gold_surface</item>
+        <item name="colorOnSurface">@color/gzh_gold_on_surface</item>
+        <item name="colorSurfaceVariant">@color/gzh_gold_surface_container_high</item>
+        <item name="colorOnSurfaceVariant">@color/gzh_gold_on_surface_variant</item>
+        <item name="colorOutline">@color/gzh_gold_outline</item>
+        <item name="android:colorBackground">@color/gzh_gold_background</item>
+        <item name="colorOnBackground">@color/gzh_gold_on_surface</item>
+        <item name="colorPrimaryDark">@color/gzh_gold_primary_dark</item>
+        <item name="colorAccent">@color/gzh_gold_accent</item>
+        <item name="android:windowBackground">@color/gzh_gold_background</item>
+        <item name="android:textColorPrimary">@color/gzh_gold_on_surface</item>
+        <item name="android:textColorSecondary">@color/gzh_gold_on_surface_variant</item>
+        <item name="android:textColorTertiary">@color/gzh_gold_on_surface_faint</item>
+        <item name="android:textColorHint">@color/gzh_gold_on_surface_faint</item>
+        <item name="android:textColorHighlight">@color/gzh_gold_primary_container</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.GeneralsZH.DialogGold</item>
+        <item name="android:alertDialogTheme">@style/Theme.GeneralsZH.AlertDialogGold</item>
+    </style>
+
+    <style name="ThemeOverlay.GeneralsZH.DialogGold" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorSurface">@color/gzh_gold_surface_container_high</item>
+        <item name="colorPrimary">@color/gzh_gold_primary</item>
+        <item name="android:textColorPrimary">@color/gzh_gold_on_surface</item>
+        <item name="android:textColorSecondary">@color/gzh_gold_on_surface_variant</item>
+    </style>
+    <style name="Theme.GeneralsZH.AlertDialogGold" parent="android:Theme.Material.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/gzh_dialog_background_navy</item>
+        <item name="android:colorAccent">@color/gzh_gold_primary</item>
+        <item name="android:textColorPrimary">@color/gzh_gold_on_surface</item>
+        <item name="android:textColorSecondary">@color/gzh_gold_on_surface_variant</item>
+        <item name="android:textColorAlertDialogListItem">@color/gzh_gold_on_surface</item>
+    </style>
+
     <style name="Theme.GeneralsZHSettingsLight" parent="Theme.Material3.Light.NoActionBar">
         <item name="colorPrimary">@color/gzh_day_primary</item>
         <item name="colorOnPrimary">@color/gzh_day_on_primary</item>
