@@ -29,12 +29,14 @@ on:
   pull_request:
     branches:
       - main
+      - feat/waru-blue-gold-launcher
     paths:
       - 'GeneralsMD/**'
       - 'Core/**'
       - 'Dependencies/**'
       - 'cmake/**'
       - 'android/**'
+      - 'update/**'
       - 'scripts/build/android/**'
       - 'Patches/**'
       - 'CMakeLists.txt'
