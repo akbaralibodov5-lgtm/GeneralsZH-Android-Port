@@ -383,11 +383,11 @@
     <string name="setup_switch_camera_high_desc">Камеру можно отдалить до четырёх раз дальше, чем позволяет карта.</string>
     <string name="setup_control_scheme_help">Применяется при следующем запуске игры. Работает и в схватке, и в кампании, и в сетевых играх: меняется только то, как вы отдаёте приказы, а не правила игры.</string>
     <string name="setup_appearance_title">Оформление</string>
-    <string name="setup_appearance_standard">Waru Blue</string>
-    <string name="setup_appearance_navy">Midnight Gold</string>
-    <string name="setup_appearance_system">Система</string>
-    <string name="setup_appearance_light">Платина</string>
-    <string name="setup_appearance_help">Палитры Waru Edition меняют только лаунчер. Waru Blue сочетает тёмно-синий, электрический синий и мягкое золото; Midnight Gold добавляет глубокие тёмные поверхности и насыщенные золотые акценты; Платина — светлая тема с синими и золотисто-шампанскими деталями. Система следует теме телефона. Графика игры не меняется.</string>
+    <string name="setup_appearance_standard">Багряный</string>
+    <string name="setup_appearance_navy">Waru Blue</string>
+    <string name="setup_appearance_system">Королевское золото</string>
+    <string name="setup_appearance_light">Серебро</string>
+    <string name="setup_appearance_help">Выберите одну из четырёх палитр лаунчера Waru Edition: багряную, электрическую синюю Waru Blue, королевское золото на тёмных поверхностях или платиновое серебро. Меняется только лаунчер, графика игры остаётся прежней.</string>
     <string name="setup_cursor_size_label">Размер курсора: %1$d%%</string>
     <string name="setup_switch_skip_intro">Пропускать заставки</string>
     <string name="setup_switch_skip_intro_desc">Логотипы EA, вступительное видео и другие ролики перед меню не показываются — игра сразу переходит к загрузке. Для обеих игр, и с модами тоже.</string>
