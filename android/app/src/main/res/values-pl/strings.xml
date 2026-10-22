@@ -381,11 +381,11 @@
     <string name="setup_switch_camera_high_desc">Kamerę można oddalić nawet cztery razy dalej, niż pozwala mapa.</string>
     <string name="setup_control_scheme_help">Działa od następnego uruchomienia gry. Działa tak samo w potyczce, kampanii i grach sieciowych: zmienia się tylko sposób wydawania rozkazów, a nie zasady gry.</string>
     <string name="setup_appearance_title">Wygląd</string>
-    <string name="setup_appearance_standard">Waru Blue</string>
-    <string name="setup_appearance_navy">Midnight Gold</string>
-    <string name="setup_appearance_system">System</string>
-    <string name="setup_appearance_light">Platyna</string>
-    <string name="setup_appearance_help">Palety Waru Edition zmieniają tylko launcher. Waru Blue łączy granat, elektryczny błękit i subtelne złoto; Midnight Gold ma ciemniejsze powierzchnie i mocniejsze złote akcenty; Platyna jest jasna z niebieskimi i szampańsko-złotymi detalami. System podąża za wyglądem telefonu. Grafika gry pozostaje bez zmian.</string>
+    <string name="setup_appearance_standard">Karmazynowa czerwień</string>
+    <string name="setup_appearance_navy">Waru Blue</string>
+    <string name="setup_appearance_system">Królewskie złoto</string>
+    <string name="setup_appearance_light">Srebro</string>
+    <string name="setup_appearance_help">Wybierz jeden z czterech motywów launchera Waru Edition: karmazynową czerwień, elektryczny błękit Waru, królewskie złoto na ciemnym tle lub platynowe srebro. Motywy zmieniają tylko launcher, nie grafikę gry.</string>
     <string name="setup_cursor_size_label">Rozmiar kursora: %1$d%%</string>
     <string name="setup_switch_skip_intro">Pomijaj filmy wprowadzające</string>
     <string name="setup_switch_skip_intro_desc">Logo EA, intro i inne filmy przed menu są pomijane — gra od razu przechodzi do wczytywania. Dla obu gier, także z modami.</string>
