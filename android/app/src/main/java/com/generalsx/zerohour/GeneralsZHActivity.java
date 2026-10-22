@@ -103,6 +103,7 @@ public class GeneralsZHActivity extends SDLActivity {
     // AndroidTextEditor.cpp. The engine calls show/hide from its own thread; the bar reports
     // back through the two native methods, which only queue for the engine's next frame.
     private TextEditorBar textEditorBar;
+    private WaruGameKeyboardOverlay gameKeyboardOverlay;
 
     private static native void nativeTextEditorChanged(String text, int serial);
     private static native void nativeVirtualKey(int sdlScancode, boolean down);
@@ -431,13 +432,21 @@ public class GeneralsZHActivity extends SDLActivity {
         // keyboard. It is a full-screen, click-through view: only its visible key
         // bounds consume touches, so the battlefield underneath remains playable.
         if (mLayout != null) {
-            WaruGameKeyboardOverlay keyboard = new WaruGameKeyboardOverlay(this);
+            gameKeyboardOverlay = new WaruGameKeyboardOverlay(this);
             FrameLayout.LayoutParams keyboardParams = new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
             keyboardParams.gravity = Gravity.TOP | Gravity.START;
-            mLayout.addView(keyboard, keyboardParams);
-            keyboard.bringToFront();
+            mLayout.addView(gameKeyboardOverlay, keyboardParams);
+            gameKeyboardOverlay.bringToFront();
         }
+    }
+
+    @Override
+    protected void onPause() {
+        if (gameKeyboardOverlay != null) {
+            gameKeyboardOverlay.releaseHeldKeys();
+        }
+        super.onPause();
     }
 
     // GeneralsX @bugfix Android port 02/08/2026 A tester reported the camera
