@@ -49,6 +49,7 @@ final class WaruGameKeyboardOverlay extends View {
     }
 
     private static float clamp(float v,float lo,float hi){ return Math.max(lo,Math.min(hi,v)); }
+    private static int clamp(int v,int lo,int hi){ return Math.max(lo,Math.min(hi,v)); }
     private int dp(float v){ return Math.round(v*getResources().getDisplayMetrics().density); }
     private int accent(){ return new int[]{0xffff4657,0xff25b8ff,0xffffc34d,0xffdce6f2}[theme]; }
     private int panel(){ return new int[]{0xe91a0c12,0xe9091929,0xe91b160c,0xe927303b}[theme]; }
