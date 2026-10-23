@@ -20,3 +20,16 @@ Includes Escape, F1–F12, Print Screen, Scroll Lock, Pause, the number row and 
 ## Validation checklist
 
 Build the Android target and test on a real device. Verify all key labels and scancodes, per-key toggles and reflow, settings pagination, drag boundaries, screen rotation, modifier combinations, touch pass-through outside the visible board, app pause/resume, and multiplayer lobby/game input. A successful CI build is not a substitute for device testing.
+
+
+## Single-player simulation speed
+
+The separate speed strip sits near the top-right of the game surface. Tap **−** or **+** to choose 0.25×, 0.5×, 0.75×, 1×, 1.5×, 2×, 3× or 4×; tap the displayed value to return to 1×. The selection is stored in the same app preferences as the keyboard. Native frame pacing applies the multiplier only in single-player and skirmish modes; LAN, Internet multiplayer and replay modes remain at 1×.
+
+### Speed-control validation
+
+- In a campaign mission and in skirmish, verify 0.25×, 0.5×, 1×, 2× and 4× against unit movement, construction, resource income, weapon fire and AI behavior.
+- Verify tap targets are limited to the three visible controls and that camera gestures and keyboard input still pass through everywhere else.
+- Enter LAN/Internet multiplayer and replay modes after selecting 4×. Confirm gameplay remains at 1× and no simulation desynchronization occurs.
+- Reopen the game and verify the chosen single-player speed persists; confirm a multiplayer selection is forced back to 1×.
+- Run the Android build and replay compatibility tests. Real-device gameplay validation is required before calling this feature fully verified.
