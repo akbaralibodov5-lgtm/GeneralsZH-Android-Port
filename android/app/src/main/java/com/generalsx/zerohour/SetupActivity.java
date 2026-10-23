@@ -583,6 +583,9 @@ public class SetupActivity extends Activity {
         UiKit.button(game, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
             getString(R.string.mods_choose_button),
             () -> startActivityForResult(new Intent(this, ModManagerActivity.class), REQUEST_MODS));
+        UiKit.button(game, UiKit.BTN_TONAL, R.drawable.ic_gzh_broom,
+            getString(R.string.mods_delete_button),
+            () -> startActivityForResult(new Intent(this, ModManagerActivity.class), REQUEST_MODS));
         UiKit.button(game, UiKit.BTN_DANGER, R.drawable.ic_gzh_broom,
             getString(R.string.mods_clear_button), () -> new android.app.AlertDialog.Builder(this)
                 .setTitle(R.string.mods_clear_title)
