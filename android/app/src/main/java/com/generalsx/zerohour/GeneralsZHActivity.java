@@ -67,7 +67,6 @@ public class GeneralsZHActivity extends SDLActivity {
     // screen (ReplayCheckActivity): play one replay, optionally fast-forwarded to a frame
     // or through to the end, and quit with a result file. A normal launch carries none
     // of these extras and gets the usual empty argument list.
-    static final String EXTRA_LAUNCH_WITH_MODS = "launch_with_mods";
     static final String EXTRA_REPLAY = "gx_replay";
     static final String EXTRA_FAST_TO = "gx_fast_to";
     static final String EXTRA_AUTO_QUIT = "gx_auto_quit";
@@ -183,11 +182,7 @@ public class GeneralsZHActivity extends SDLActivity {
         // GeneralsX @feature Android port 18/10/2026 The mods switched on in the launcher's Mods
         // screen, in their order, for the game being started (ModManager, GXManagedMods.h). Written
         // here so both engines, a replay and every way of starting the game read the same list.
-        if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_LAUNCH_WITH_MODS, false)) {
-            ModManager.writeActiveList(this);
-        } else {
-            ModManager.clearActiveList(this);
-        }
+        ModManager.writeActiveList(this);
         writeZeroHourArtPath();
         Intent intent = getIntent();
         String replay = intent != null ? intent.getStringExtra(EXTRA_REPLAY) : null;
