@@ -104,6 +104,7 @@ public class GeneralsZHActivity extends SDLActivity {
     // back through the two native methods, which only queue for the engine's next frame.
     private TextEditorBar textEditorBar;
     private WaruGameKeyboardOverlay gameKeyboardOverlay;
+    private WaruGameSpeedOverlay gameSpeedOverlay;
 
     private static native void nativeTextEditorChanged(String text, int serial);
     private static native void nativeVirtualKey(int sdlScancode, boolean down);
@@ -438,6 +439,14 @@ public class GeneralsZHActivity extends SDLActivity {
             keyboardParams.gravity = Gravity.TOP | Gravity.START;
             mLayout.addView(gameKeyboardOverlay, keyboardParams);
             gameKeyboardOverlay.bringToFront();
+            // Speed control stays separate from the draggable keyboard and only
+            // affects the local simulation; native code forces 1x for networking.
+            gameSpeedOverlay = new WaruGameSpeedOverlay(this);
+            FrameLayout.LayoutParams speedParams = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            speedParams.gravity = Gravity.TOP | Gravity.START;
+            mLayout.addView(gameSpeedOverlay, speedParams);
+            gameSpeedOverlay.bringToFront();
         }
     }
 
