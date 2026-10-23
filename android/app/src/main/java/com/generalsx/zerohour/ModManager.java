@@ -250,11 +250,6 @@ final class ModManager {
      * Right before the game starts: the enabled folders of the selected game, highest priority
      * first, for the engine (GXManagedMods.h). No enabled mod: no file.
      */
-    static void clearActiveList(Context ctx) {
-        new File(ctx.getFilesDir(), ACTIVE_LIST_FILE).delete();
-        new File(ctx.getFilesDir(), BOOT_PENDING_FILE).delete();
-    }
-
     static void writeActiveList(Context ctx) {
         File out = new File(ctx.getFilesDir(), ACTIVE_LIST_FILE);
         List<String> paths = new ArrayList<>();
