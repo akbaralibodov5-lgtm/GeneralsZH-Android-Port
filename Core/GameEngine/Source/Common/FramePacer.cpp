@@ -38,14 +38,29 @@ FramePacer* TheFramePacer = nullptr;
 // the engine reads the value on its game thread, so keep the value atomic.
 static std::atomic<float> s_mobileSinglePlayerSpeed(1.0f);
 
+static Bool isMobileSpeedMode()
+{
+    if (TheGameLogic == nullptr)
+    {
+        return FALSE;
+    }
+    const GameMode mode = TheGameLogic->getGameMode();
+    return mode == GAME_SINGLE_PLAYER || mode == GAME_SKIRMISH;
+}
+
 extern "C" float GX_SetMobileGameSpeed(float multiplier)
 {
-    // Network matches use the authoritative network frame rate. Never alter
-    // their simulation timing, even if a stale UI event arrives during a match.
-    if (TheNetwork != nullptr)
+    // LAN/Internet sessions and replays must remain deterministic. Before a
+    // game mode is selected, retain the requested value so it can be applied
+    // when a single-player/skirmish match starts.
+    if (TheGameLogic != nullptr)
     {
-        s_mobileSinglePlayerSpeed.store(1.0f, std::memory_order_relaxed);
-        return 1.0f;
+        const GameMode mode = TheGameLogic->getGameMode();
+        if (mode == GAME_LAN || mode == GAME_INTERNET || mode == GAME_REPLAY)
+        {
+            s_mobileSinglePlayerSpeed.store(1.0f, std::memory_order_relaxed);
+            return 1.0f;
+        }
     }
 
     if (!std::isfinite(multiplier))
@@ -239,7 +254,7 @@ Real FramePacer::getActualLogicTimeScaleOverFpsRatio(LogicTimeQueryFlags flags) 
 	// single-player speed control applies a multiplier after this normal pacing
 	// ratio; multiplayer stays on the authoritative network frame rate.
 	const Real pacingRatio = min(1.0f, (Real)getActualLogicTimeScaleFps(flags) / getUpdateFps());
-	if (TheNetwork != nullptr)
+	if (!isMobileSpeedMode())
 	{
 		return pacingRatio;
 	}
