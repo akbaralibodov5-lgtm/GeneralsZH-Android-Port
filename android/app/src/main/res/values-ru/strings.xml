@@ -392,7 +392,6 @@
     <string name="setup_switch_skip_intro">Пропускать заставки</string>
     <string name="setup_switch_skip_intro_desc">Логотипы EA, вступительное видео и другие ролики перед меню не показываются — игра сразу переходит к загрузке. Для обеих игр, и с модами тоже.</string>
     <!-- GeneralsX @feature Android port 18/10/2026 Mods screen (ModManagerActivity), from realkot's GeneralsX fork. -->
-    <string name="mods_delete_button">Удалить</string>
     <string name="mods_delete_confirm">Навсегда удалить «%1$s» из управляемой папки Mods?</string>
     <string name="mods_delete_confirm_title">Удалить мод?</string>
     <string name="mods_delete_failed">Не удалось полностью удалить %1$s. Проверьте доступ к хранилищу и повторите попытку.</string>
