@@ -265,11 +265,7 @@ public class SetupActivity extends Activity {
 
         addPlainButton(root, getString(R.string.setup_button_select_game_folder), this::onSelectGameFolder);
         addPlainButton(root, getString(R.string.setup_button_view_logs), this::onViewLogs);
-        addPlainButton(root, getString(R.string.setup_button_launch_game), () -> {
-            Intent gameIntent = new Intent(this, GeneralsZHActivity.class);
-            gameIntent.putExtra(GeneralsZHActivity.EXTRA_LAUNCH_WITH_MODS, false);
-            startActivity(gameIntent);
-        });
+        addPlainButton(root, getString(R.string.setup_button_launch_game), this::onLaunchGame);
         addPlainButton(root, getString(R.string.setup_button_clear_game_folder), this::onClearGameFolder);
     }
 
@@ -342,8 +338,9 @@ public class SetupActivity extends Activity {
         // navigation bar below clears the gesture handle.
         InsetUtil.applySafeInsets(shell);
 
-        appBarTitle = UiKit.appBar(shell, getString(R.string.waru_brand_overline),
-            getString(R.string.waru_brand_title),
+        appBarTitle = UiKit.appBar(shell, getString(isGeneralsSelected(this)
+                ? R.string.setup_title_generals : R.string.setup_title),
+            getString(R.string.nav_tab_home),
             R.drawable.ic_gzh_doc, getString(R.string.setup_button_view_logs), this::onViewLogs);
 
         contentHost = new FrameLayout(this);
@@ -498,46 +495,6 @@ public class SetupActivity extends Activity {
     // ------------------------------------------------------------ Home page
 
     private void buildHomeSection(LinearLayout page) {
-        // Waru Edition @feature launcher 22/10/2026 Blue-and-gold branded home hero.
-        LinearLayout hero = UiKit.card(page);
-        hero.setBackgroundTintList(UiKit.tint(this, R.color.gzh_surface_container_high));
-        LinearLayout heroContent = new LinearLayout(this);
-        heroContent.setOrientation(LinearLayout.VERTICAL);
-        int heroPad = UiKit.dp(this, 20);
-        heroContent.setPadding(heroPad, heroPad, heroPad, heroPad);
-        android.graphics.drawable.GradientDrawable heroOutline = new android.graphics.drawable.GradientDrawable();
-        heroOutline.setColor(UiKit.color(this, R.color.gzh_surface_container_high));
-        heroOutline.setCornerRadius(UiKit.dp(this, 24));
-        heroOutline.setStroke(UiKit.dp(this, 1), UiKit.color(this, R.color.gzh_accent));
-        heroContent.setBackground(heroOutline);
-        TextView brand = new TextView(this);
-        brand.setText(R.string.waru_brand_title);
-        brand.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 30);
-        brand.setTypeface(android.graphics.Typeface.create("sans-serif-black", android.graphics.Typeface.BOLD));
-        brand.setLetterSpacing(0.035f);
-        brand.setTextColor(UiKit.color(this, R.color.gzh_primary));
-        heroContent.addView(brand);
-        TextView edition = new TextView(this);
-        edition.setText(R.string.waru_brand_edition);
-        edition.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12);
-        edition.setLetterSpacing(0.16f);
-        edition.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        edition.setTextColor(UiKit.color(this, R.color.gzh_accent));
-        LinearLayout.LayoutParams editionLp = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        editionLp.topMargin = UiKit.dp(this, 4);
-        heroContent.addView(edition, editionLp);
-        TextView gameSubtitle = new TextView(this);
-        gameSubtitle.setText(isGeneralsSelected(this)
-            ? R.string.setup_title_generals : R.string.setup_title);
-        gameSubtitle.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13);
-        gameSubtitle.setTextColor(UiKit.color(this, R.color.gzh_on_surface_variant));
-        LinearLayout.LayoutParams subtitleLp = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        subtitleLp.topMargin = UiKit.dp(this, 10);
-        heroContent.addView(gameSubtitle, subtitleLp);
-        hero.addView(heroContent, new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         // GeneralsX @feature Android port 04/10/2026 Which game this page is about. Play, the game
         // folder and its checks below follow it; the other pages are shared by both games.
         final boolean generals = isGeneralsSelected(this);
@@ -584,27 +541,10 @@ public class SetupActivity extends Activity {
                 : modsOn == 0 ? getString(R.string.mods_home_all_off, installedMods.size())
                 : getString(R.string.mods_home_enabled, modsOn),
             () -> startActivityForResult(new Intent(this, ModManagerActivity.class), REQUEST_MODS));
-        UiKit.button(game, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
-            getString(R.string.mods_choose_button),
-            () -> startActivityForResult(new Intent(this, ModManagerActivity.class), REQUEST_MODS));
-        UiKit.button(game, UiKit.BTN_TONAL, R.drawable.ic_gzh_broom,
-            getString(R.string.mods_delete_button),
-            () -> startActivityForResult(new Intent(this, ModManagerActivity.class), REQUEST_MODS));
-        UiKit.button(game, UiKit.BTN_DANGER, R.drawable.ic_gzh_broom,
-            getString(R.string.mods_clear_button), () -> new android.app.AlertDialog.Builder(this)
-                .setTitle(R.string.mods_clear_title)
-                .setMessage(R.string.mods_clear_message)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.mods_clear_button, (dialog, which) -> {
-                    ModManager.switchOff(this, null);
-                    showTab(currentTab);
-                }).show());
 
         // The one thing this app exists to do, as the first thing on it.
         UiKit.button(page, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_play,
-            getString(R.string.setup_button_launch_game), () -> launchGameNow(false));
-        UiKit.button(page, UiKit.BTN_TONAL, R.drawable.ic_gzh_play,
-            getString(R.string.mods_play_button), this::onLaunchMod);
+            getString(R.string.setup_button_launch_game), this::onLaunchGame);
 
         LinearLayout folder = UiKit.card(page);
         UiKit.sectionHeader(folder, R.drawable.ic_gzh_folder,
@@ -4194,46 +4134,43 @@ public class SetupActivity extends Activity {
     // rotated the phone), there's nothing to wait for.
     private boolean pendingLaunchAfterRotation = false;
 
-    // Compatibility entry point used by the fallback UI.
     private void onLaunchGame() {
-        launchGameNow(false);
-    }
-
-    private void onLaunchMod() {
+        // GeneralsX @feature Android port 18/10/2026 Safe start with mods (PLAN-027): two starts in
+        // a row with the same mods never reached the main menu -- offer to start without them, or
+        // without the mod switched on last.
         final String modList = ModManager.activeList(this);
-        if (modList.isEmpty()) {
-            Toast.makeText(this, R.string.mods_select_first, Toast.LENGTH_LONG).show();
-            startActivityForResult(new Intent(this, ModManagerActivity.class), REQUEST_MODS);
-            return;
-        }
-        if (ModManager.failedStarts(this, modList) >= 2) {
+        if (!modList.isEmpty() && ModManager.failedStarts(this, modList) >= 2) {
             final String last = ModManager.lastEnabled(this);
             final boolean lastOn = last != null && ("\n" + modList + "\n").contains("/" + last + "\n");
             android.app.AlertDialog.Builder b = new android.app.AlertDialog.Builder(this)
                 .setTitle(R.string.mods_safe_title)
                 .setMessage(R.string.mods_safe_message)
-                .setPositiveButton(R.string.mods_safe_without, (d, w) -> launchGameNow(false))
-                .setNegativeButton(R.string.mods_safe_anyway, (d, w) -> launchGameNow(true));
+                .setPositiveButton(R.string.mods_safe_without, (d, w) -> {
+                    ModManager.switchOff(this, null);
+                    showTab(currentTab);
+                    launchGameNow();
+                })
+                .setNegativeButton(R.string.mods_safe_anyway, (d, w) -> launchGameNow());
             if (lastOn) {
-                b.setNeutralButton(getString(R.string.mods_safe_without_last, last),
-                    (d, w) -> { ModManager.switchOff(this, last); launchGameNow(true); });
+                b.setNeutralButton(getString(R.string.mods_safe_without_last, last), (d, w) -> {
+                    ModManager.switchOff(this, last);
+                    showTab(currentTab);
+                    launchGameNow();
+                });
             }
             b.show();
             return;
         }
-        launchGameNow(true);
+        launchGameNow();
     }
 
-    private boolean pendingLaunchWithMods = false;
-
-    private void launchGameNow(boolean withMods) {
-        pendingLaunchWithMods = withMods;
+    private void launchGameNow() {
+        // GeneralsX @feature Android port 04/10/2026 The text-language marker is checked against
+        // the data of the game about to start, which may not be the one it was last written for.
         applyGameLanguageOverride();
         ReplayCheckActivity.clearCheckMarkers(this);
         if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            Intent gameIntent = new Intent(this, GeneralsZHActivity.class);
-            gameIntent.putExtra(GeneralsZHActivity.EXTRA_LAUNCH_WITH_MODS, withMods);
-            startActivity(gameIntent);
+            startActivity(new Intent(this, GeneralsZHActivity.class));
             return;
         }
         pendingLaunchAfterRotation = true;
@@ -4245,9 +4182,7 @@ public class SetupActivity extends Activity {
         super.onConfigurationChanged(newConfig);
         if (pendingLaunchAfterRotation && newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
             pendingLaunchAfterRotation = false;
-            Intent gameIntent = new Intent(this, GeneralsZHActivity.class);
-            gameIntent.putExtra(GeneralsZHActivity.EXTRA_LAUNCH_WITH_MODS, pendingLaunchWithMods);
-            startActivity(gameIntent);
+            startActivity(new Intent(this, GeneralsZHActivity.class));
         }
     }
 
