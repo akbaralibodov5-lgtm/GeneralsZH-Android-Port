@@ -4190,6 +4190,11 @@ public class SetupActivity extends Activity {
     // rotated the phone), there's nothing to wait for.
     private boolean pendingLaunchAfterRotation = false;
 
+    // Compatibility entry point used by the fallback UI.
+    private void onLaunchGame() {
+        launchGameNow(false);
+    }
+
     private void onLaunchMod() {
         final String modList = ModManager.activeList(this);
         if (modList.isEmpty()) {
