@@ -519,5 +519,4 @@
     <string name="mods_clear_title">Disable mods?</string>
     <string name="mods_clear_message">This turns off all mods for the separate mod launch. Your mod files are kept and the original game stays unchanged.</string>
     <string name="mods_select_first">Choose and enable a mod first.</string>
-    <string name="mods_delete_button">Delete mod files</string>
 </resources>
