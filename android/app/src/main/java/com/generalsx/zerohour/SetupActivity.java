@@ -265,7 +265,11 @@ public class SetupActivity extends Activity {
 
         addPlainButton(root, getString(R.string.setup_button_select_game_folder), this::onSelectGameFolder);
         addPlainButton(root, getString(R.string.setup_button_view_logs), this::onViewLogs);
-        addPlainButton(root, getString(R.string.setup_button_launch_game), this::onLaunchGame);
+        addPlainButton(root, getString(R.string.setup_button_launch_game), () -> {
+            Intent gameIntent = new Intent(this, GeneralsZHActivity.class);
+            gameIntent.putExtra(GeneralsZHActivity.EXTRA_LAUNCH_WITH_MODS, false);
+            startActivity(gameIntent);
+        });
         addPlainButton(root, getString(R.string.setup_button_clear_game_folder), this::onClearGameFolder);
     }
 
