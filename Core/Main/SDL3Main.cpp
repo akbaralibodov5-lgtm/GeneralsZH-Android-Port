@@ -130,6 +130,15 @@ SDL_Window* TheSDL3Window = nullptr;
 // CommandXlat paths therefore receive the same key-down/key-up events as a
 // physical keyboard; no game-order protocol or multiplayer message is invented.
 #if defined(__ANDROID__)
+extern "C" float GX_SetMobileGameSpeed(float multiplier);
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_generalsx_zerohour_WaruGameSpeedOverlay_nativeSetGameSpeed(
+        JNIEnv *, jclass, jfloat multiplier)
+{
+    return static_cast<jfloat>(GX_SetMobileGameSpeed(static_cast<float>(multiplier)));
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_generalsx_zerohour_GeneralsZHActivity_nativeVirtualKey(
         JNIEnv *, jclass, jint rawScancode, jboolean rawDown)
