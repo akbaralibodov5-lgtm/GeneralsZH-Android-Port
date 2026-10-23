@@ -9,32 +9,36 @@ import android.view.MotionEvent;
 import android.view.View;
 
 /**
- * Small in-game simulation-speed control. Native code is the authority: it
- * returns 1x whenever a network session is active, so the UI cannot accelerate
- * a multiplayer match even if a touch is received.
+ * Compact speed shortcut. The corner button toggles the controls open/closed;
+ * when closed, the rest of the game surface is completely click-through.
+ * Native code is authoritative and forces 1x in network/replay modes.
  */
 final class WaruGameSpeedOverlay extends View {
     private static final String PREFS = "waru_game_keyboard";
     private static final String SPEED_KEY = "single_player_speed";
     private static final float[] SPEEDS = {0.25f, 0.5f, 0.75f, 1f, 1.5f, 2f, 3f, 4f};
+
     private final SharedPreferences prefs;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private float speed;
+    private final RectF toggle = new RectF();
     private final RectF minus = new RectF();
     private final RectF value = new RectF();
     private final RectF plus = new RectF();
+    private boolean expanded = false;
+    private float speed;
 
     WaruGameSpeedOverlay(Context context) {
         super(context);
         prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        float saved = prefs.getFloat(SPEED_KEY, 1f);
-        speed = normalize(nativeSetGameSpeed(saved));
+        speed = normalize(nativeSetGameSpeed(prefs.getFloat(SPEED_KEY, 1f)));
         setLayerType(View.LAYER_TYPE_HARDWARE, null);
         setClickable(true);
     }
 
     private static float normalize(float candidate) {
-        for (float item : SPEEDS) if (Math.abs(item - candidate) < 0.001f) return item;
+        for (float item : SPEEDS) {
+            if (Math.abs(item - candidate) < 0.001f) return item;
+        }
         return 1f;
     }
 
@@ -56,18 +60,36 @@ final class WaruGameSpeedOverlay extends View {
         paint.setFakeBoldText(true);
         paint.setTextAlign(Paint.Align.CENTER);
         Paint.FontMetrics fm = paint.getFontMetrics();
-        canvas.drawText(label, rect.centerX(), rect.centerY() - (fm.ascent + fm.descent) / 2, paint);
+        canvas.drawText(label, rect.centerX(),
+                rect.centerY() - (fm.ascent + fm.descent) / 2, paint);
         paint.setFakeBoldText(false);
     }
 
-    @Override protected void onDraw(Canvas canvas) {
+    @Override
+    protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        float w = dp(42), h = dp(36), gap = dp(5);
         float right = getWidth() - dp(12);
-        float top = dp(76);
-        plus.set(right - w, top, right, top + h);
-        value.set(plus.left - dp(70) - gap, top, plus.left - gap, top + h);
-        minus.set(value.left - w - gap, top, value.left - gap, top + h);
+        float bottom = getHeight() - dp(12);
+
+        // Small, unobtrusive corner shortcut while the speed controls are closed.
+        float toggleSize = dp(42);
+        toggle.set(right - toggleSize, bottom - toggleSize, right, bottom);
+        drawButton(canvas, toggle, expanded ? "×" : "»", expanded);
+
+        if (!expanded) return;
+
+        float h = dp(38);
+        float gap = dp(5);
+        float plusW = dp(42);
+        float valueW = dp(70);
+        float minusW = dp(42);
+        float panelRight = right;
+        float panelBottom = toggle.top - dp(8);
+        float panelTop = panelBottom - h;
+        plus.set(panelRight - plusW, panelTop, panelRight, panelBottom);
+        value.set(plus.left - gap - valueW, panelTop, plus.left - gap, panelBottom);
+        minus.set(value.left - gap - minusW, panelTop, value.left - gap, panelBottom);
+
         drawButton(canvas, minus, "−", false);
         drawButton(canvas, value, label(speed), speed == 1f);
         drawButton(canvas, plus, "+", false);
@@ -81,47 +103,58 @@ final class WaruGameSpeedOverlay extends View {
     private void change(int direction) {
         int index = 3;
         for (int i = 0; i < SPEEDS.length; i++) {
-            if (Math.abs(SPEEDS[i] - speed) < 0.001f) { index = i; break; }
+            if (Math.abs(SPEEDS[i] - speed) < 0.001f) {
+                index = i;
+                break;
+            }
         }
         index = Math.max(0, Math.min(SPEEDS.length - 1, index + direction));
-        float accepted = normalize(nativeSetGameSpeed(SPEEDS[index]));
-        speed = accepted;
-        // Only persist the engine-accepted value. A network game always returns 1x.
+        speed = normalize(nativeSetGameSpeed(SPEEDS[index]));
         prefs.edit().putFloat(SPEED_KEY, speed).apply();
         invalidate();
     }
 
-    @Override public boolean onTouchEvent(MotionEvent event) {
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        float x = event.getX();
+        float y = event.getY();
+
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
-            // Only claim touches inside our three controls; let battlefield and
-            // keyboard touches fall through to the existing overlay underneath.
-            return minus.contains(event.getX(), event.getY())
-                    || value.contains(event.getX(), event.getY())
-                    || plus.contains(event.getX(), event.getY());
+            // Only the corner toggle and, while open, the three settings buttons
+            // consume input. Every other touch passes through to the game/keyboard.
+            return toggle.contains(x, y)
+                    || (expanded && (minus.contains(x, y)
+                    || value.contains(x, y) || plus.contains(x, y)));
         }
+
         if (event.getAction() == MotionEvent.ACTION_UP) {
-            float x = event.getX(), y = event.getY();
-            if (minus.contains(x, y)) change(-1);
-            else if (plus.contains(x, y)) change(1);
-            else if (value.contains(x, y)) {
+            if (toggle.contains(x, y)) {
+                expanded = !expanded;
+            } else if (expanded && minus.contains(x, y)) {
+                change(-1);
+            } else if (expanded && plus.contains(x, y)) {
+                change(1);
+            } else if (expanded && value.contains(x, y)) {
                 speed = normalize(nativeSetGameSpeed(1f));
                 prefs.edit().putFloat(SPEED_KEY, speed).apply();
-                invalidate();
             } else {
                 return false;
             }
+            invalidate();
             performClick();
             return true;
         }
         return true;
     }
 
-    @Override public boolean performClick() {
+    @Override
+    public boolean performClick() {
         super.performClick();
         return true;
     }
 
-    @Override protected void onDetachedFromWindow() {
+    @Override
+    protected void onDetachedFromWindow() {
         nativeSetGameSpeed(1f);
         super.onDetachedFromWindow();
     }
