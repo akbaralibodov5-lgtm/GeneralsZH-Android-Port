@@ -509,4 +509,10 @@
     <string name="waru_brand_overline" translatable="false">COMMAND &amp; CONQUER • MOBILE EDITION</string>
     <string name="waru_brand_title" translatable="false">Waru Edition</string>
     <string name="waru_brand_edition" translatable="false">BLUE • GOLD • BATTLE READY</string>
+    <string name="mods_play_button">Играть с модами</string>
+    <string name="mods_choose_button">Выбрать / настроить файлы модов</string>
+    <string name="mods_clear_button">Отключить выбранные моды</string>
+    <string name="mods_clear_title">Отключить моды?</string>
+    <string name="mods_clear_message">Все моды будут выключены для отдельного запуска с модами. Файлы модов сохранятся, оригинальная игра не изменится.</string>
+    <string name="mods_select_first">Сначала выберите и включите мод.</string>
 </resources>
