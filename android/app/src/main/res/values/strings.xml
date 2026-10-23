@@ -400,7 +400,6 @@
     <string name="setup_switch_skip_intro">Skip intro movies</string>
     <string name="setup_switch_skip_intro_desc">EA logos, the intro and other movies before the menu are skipped; the game goes straight to loading. For both games, mods included.</string>
     <!-- GeneralsX @feature Android port 18/10/2026 Mods screen (ModManagerActivity), from realkot's GeneralsX fork. -->
-    <string name="mods_delete_button">Delete</string>
     <string name="mods_delete_confirm">Permanently delete “%1$s” from the managed Mods folder?</string>
     <string name="mods_delete_confirm_title">Delete mod?</string>
     <string name="mods_delete_failed">Could not completely delete %1$s. Check storage access and try again.</string>
