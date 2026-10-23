@@ -4212,7 +4212,6 @@ public class SetupActivity extends Activity {
         launchGameNow(true);
     }
 
-    private boolean pendingLaunchAfterRotation = false;
     private boolean pendingLaunchWithMods = false;
 
     private void launchGameNow(boolean withMods) {
