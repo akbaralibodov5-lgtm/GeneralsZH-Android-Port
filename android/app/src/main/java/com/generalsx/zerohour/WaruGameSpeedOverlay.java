@@ -93,18 +93,22 @@ final class WaruGameSpeedOverlay extends View {
 
     @Override public boolean onTouchEvent(MotionEvent event) {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
-            invalidate();
-            return true;
+            // Only claim touches inside our three controls; let battlefield and
+            // keyboard touches fall through to the existing overlay underneath.
+            return minus.contains(event.getX(), event.getY())
+                    || value.contains(event.getX(), event.getY())
+                    || plus.contains(event.getX(), event.getY());
         }
         if (event.getAction() == MotionEvent.ACTION_UP) {
             float x = event.getX(), y = event.getY();
             if (minus.contains(x, y)) change(-1);
             else if (plus.contains(x, y)) change(1);
             else if (value.contains(x, y)) {
-                nativeSetGameSpeed(1f);
-                speed = 1f;
+                speed = normalize(nativeSetGameSpeed(1f));
                 prefs.edit().putFloat(SPEED_KEY, speed).apply();
                 invalidate();
+            } else {
+                return false;
             }
             performClick();
             return true;
