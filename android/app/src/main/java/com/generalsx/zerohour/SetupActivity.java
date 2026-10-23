@@ -580,10 +580,24 @@ public class SetupActivity extends Activity {
                 : modsOn == 0 ? getString(R.string.mods_home_all_off, installedMods.size())
                 : getString(R.string.mods_home_enabled, modsOn),
             () -> startActivityForResult(new Intent(this, ModManagerActivity.class), REQUEST_MODS));
+        UiKit.button(game, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
+            getString(R.string.mods_choose_button),
+            () -> startActivityForResult(new Intent(this, ModManagerActivity.class), REQUEST_MODS));
+        UiKit.button(game, UiKit.BTN_DANGER, R.drawable.ic_gzh_broom,
+            getString(R.string.mods_clear_button), () -> new android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.mods_clear_title)
+                .setMessage(R.string.mods_clear_message)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.mods_clear_button, (dialog, which) -> {
+                    ModManager.switchOff(this, null);
+                    showTab(currentTab);
+                }).show());
 
         // The one thing this app exists to do, as the first thing on it.
         UiKit.button(page, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_play,
-            getString(R.string.setup_button_launch_game), this::onLaunchGame);
+            getString(R.string.setup_button_launch_game), () -> launchGameNow(false));
+        UiKit.button(page, UiKit.BTN_TONAL, R.drawable.ic_gzh_play,
+            getString(R.string.mods_play_button), this::onLaunchMod);
 
         LinearLayout folder = UiKit.card(page);
         UiKit.sectionHeader(folder, R.drawable.ic_gzh_folder,
@@ -4173,43 +4187,42 @@ public class SetupActivity extends Activity {
     // rotated the phone), there's nothing to wait for.
     private boolean pendingLaunchAfterRotation = false;
 
-    private void onLaunchGame() {
-        // GeneralsX @feature Android port 18/10/2026 Safe start with mods (PLAN-027): two starts in
-        // a row with the same mods never reached the main menu -- offer to start without them, or
-        // without the mod switched on last.
+    private void onLaunchMod() {
         final String modList = ModManager.activeList(this);
-        if (!modList.isEmpty() && ModManager.failedStarts(this, modList) >= 2) {
+        if (modList.isEmpty()) {
+            Toast.makeText(this, R.string.mods_select_first, Toast.LENGTH_LONG).show();
+            startActivityForResult(new Intent(this, ModManagerActivity.class), REQUEST_MODS);
+            return;
+        }
+        if (ModManager.failedStarts(this, modList) >= 2) {
             final String last = ModManager.lastEnabled(this);
             final boolean lastOn = last != null && ("\n" + modList + "\n").contains("/" + last + "\n");
             android.app.AlertDialog.Builder b = new android.app.AlertDialog.Builder(this)
                 .setTitle(R.string.mods_safe_title)
                 .setMessage(R.string.mods_safe_message)
-                .setPositiveButton(R.string.mods_safe_without, (d, w) -> {
-                    ModManager.switchOff(this, null);
-                    showTab(currentTab);
-                    launchGameNow();
-                })
-                .setNegativeButton(R.string.mods_safe_anyway, (d, w) -> launchGameNow());
+                .setPositiveButton(R.string.mods_safe_without, (d, w) -> launchGameNow(false))
+                .setNegativeButton(R.string.mods_safe_anyway, (d, w) -> launchGameNow(true));
             if (lastOn) {
-                b.setNeutralButton(getString(R.string.mods_safe_without_last, last), (d, w) -> {
-                    ModManager.switchOff(this, last);
-                    showTab(currentTab);
-                    launchGameNow();
-                });
+                b.setNeutralButton(getString(R.string.mods_safe_without_last, last),
+                    (d, w) -> { ModManager.switchOff(this, last); launchGameNow(true); });
             }
             b.show();
             return;
         }
-        launchGameNow();
+        launchGameNow(true);
     }
 
-    private void launchGameNow() {
-        // GeneralsX @feature Android port 04/10/2026 The text-language marker is checked against
-        // the data of the game about to start, which may not be the one it was last written for.
+    private boolean pendingLaunchAfterRotation = false;
+    private boolean pendingLaunchWithMods = false;
+
+    private void launchGameNow(boolean withMods) {
+        pendingLaunchWithMods = withMods;
         applyGameLanguageOverride();
         ReplayCheckActivity.clearCheckMarkers(this);
         if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            startActivity(new Intent(this, GeneralsZHActivity.class));
+            Intent gameIntent = new Intent(this, GeneralsZHActivity.class);
+            gameIntent.putExtra(GeneralsZHActivity.EXTRA_LAUNCH_WITH_MODS, withMods);
+            startActivity(gameIntent);
             return;
         }
         pendingLaunchAfterRotation = true;
@@ -4221,7 +4234,9 @@ public class SetupActivity extends Activity {
         super.onConfigurationChanged(newConfig);
         if (pendingLaunchAfterRotation && newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
             pendingLaunchAfterRotation = false;
-            startActivity(new Intent(this, GeneralsZHActivity.class));
+            Intent gameIntent = new Intent(this, GeneralsZHActivity.class);
+            gameIntent.putExtra(GeneralsZHActivity.EXTRA_LAUNCH_WITH_MODS, pendingLaunchWithMods);
+            startActivity(gameIntent);
         }
     }
 
