@@ -742,8 +742,83 @@ final class ModImportService {
         if (target.exists()) {
             throw new IOException("Destination already exists: " + target.getName());
         }
-        if (!stage.renameTo(target)) {
-            throw new IOException("Could not atomically finish the mod installation");
+
+        // Fast path: a same-filesystem rename is atomic and avoids copying large mods.
+        if (stage.renameTo(target)) {
+            return;
+        }
+
+        // Some Android shared-storage/FUSE implementations reject renameTo() when the
+        // staging folder is nested under mods/.installing, even on the same volume.
+        // Fall back to a verified copy into the final mods directory. Keep the target
+        // hidden from ModManager until the copy is complete by copying into a dot-folder,
+        // then rename that sibling into place where possible.
+        File parent = target.getParentFile();
+        if (parent == null || !parent.isDirectory()) {
+            throw new IOException("Mod destination folder is unavailable: " + parent);
+        }
+        File siblingStage = new File(parent, ".install-" + UUID.randomUUID());
+        if (!siblingStage.mkdir()) {
+            throw new IOException("Could not create temporary mod destination: " + siblingStage);
+        }
+
+        try {
+            copyInstallTree(stage, siblingStage);
+            int bigCount = verifyBigArchives(siblingStage, new CancellationSignal());
+            if (bigCount <= 0) {
+                throw new IOException("Imported mod copy contains no valid BIG archive");
+            }
+            if (target.exists()) {
+                throw new IOException("Destination already exists: " + target.getName());
+            }
+            if (!siblingStage.renameTo(target)) {
+                // Last-resort fallback for storage providers that reject directory rename
+                // entirely. Copy to the visible target only after all source files were copied
+                // and verified; clean up any partial target if publishing fails.
+                if (target.exists() || !target.mkdir()) {
+                    throw new IOException("Could not create final mod folder: " + target);
+                }
+                try {
+                    copyInstallTree(siblingStage, target);
+                    int finalBigCount = verifyBigArchives(target, new CancellationSignal());
+                    if (finalBigCount <= 0) {
+                        throw new IOException("Installed mod contains no valid BIG archive");
+                    }
+                } catch (IOException | RuntimeException e) {
+                    deleteRecursively(target);
+                    throw e;
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            deleteRecursively(siblingStage);
+            throw e;
+        } finally {
+            deleteRecursively(siblingStage);
+        }
+    }
+
+    private static void copyInstallTree(File source, File destination) throws IOException {
+        if (source == null || destination == null || !source.isDirectory()) {
+            throw new IOException("Invalid mod staging directory");
+        }
+        File[] children = source.listFiles();
+        if (children == null) {
+            throw new IOException("Could not read staged mod files: " + source);
+        }
+        for (File child : children) {
+            File out = new File(destination, child.getName());
+            if (child.isDirectory()) {
+                if (!out.mkdir() && !out.isDirectory()) {
+                    throw new IOException("Could not create mod folder: " + out);
+                }
+                copyInstallTree(child, out);
+            } else if (child.isFile()) {
+                try (InputStream in = new FileInputStream(child)) {
+                    copyStream(in, out, new Stats(), new CancellationSignal());
+                }
+            } else {
+                throw new IOException("Unsupported file in mod staging folder: " + child);
+            }
         }
     }
 
