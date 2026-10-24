@@ -122,7 +122,36 @@ HWND ApplicationHWnd = nullptr;  ///< our application window handle
 // GLOBAL SDL3 WINDOW
 // GeneralsX @feature felipebraz 16/02/2026
 // SDL3 window created in main() before GameMain(), stored globally for engine access
+
 SDL_Window* TheSDL3Window = nullptr;
+
+// GeneralsX @feature Waru Edition 22/10/2026 Feed the on-screen PC-style
+// keyboard through SDL's normal event queue. The existing SDL3Keyboard and
+// CommandXlat paths therefore receive the same key-down/key-up events as a
+// physical keyboard; no game-order protocol or multiplayer message is invented.
+#if defined(__ANDROID__)
+extern "C" JNIEXPORT void JNICALL
+Java_com_generalsx_zerohour_GeneralsZHActivity_nativeVirtualKey(
+        JNIEnv *, jclass, jint rawScancode, jboolean rawDown)
+{
+    const SDL_Scancode scancode = static_cast<SDL_Scancode>(rawScancode);
+    if (scancode <= SDL_SCANCODE_UNKNOWN || scancode >= SDL_SCANCODE_COUNT)
+        return;
+
+    SDL_Event event{};
+    event.type = rawDown ? SDL_EVENT_KEY_DOWN : SDL_EVENT_KEY_UP;
+    event.key.timestamp = SDL_GetTicksNS();
+    event.key.windowID = TheSDL3Window != nullptr ? SDL_GetWindowID(TheSDL3Window) : 0;
+    event.key.which = 0;
+    event.key.scancode = scancode;
+    event.key.key = SDL_GetKeyFromScancode(scancode, SDL_KMOD_NONE, false);
+    event.key.mod = SDL_KMOD_NONE;
+    event.key.raw = 0;
+    event.key.down = rawDown == JNI_TRUE;
+    event.key.repeat = false;
+    SDL_PushEvent(&event);
+}
+#endif
 
 // GAME TEXT FILE PATHS
 // TheSuperHackers @build felipebraz 13/02/2026

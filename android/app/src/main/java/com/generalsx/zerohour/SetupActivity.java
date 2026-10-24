@@ -338,8 +338,9 @@ public class SetupActivity extends Activity {
         // navigation bar below clears the gesture handle.
         InsetUtil.applySafeInsets(shell);
 
-        appBarTitle = UiKit.appBar(shell, getString(R.string.waru_brand_overline),
-            getString(R.string.waru_brand_title),
+        appBarTitle = UiKit.appBar(shell, getString(isGeneralsSelected(this)
+                ? R.string.setup_title_generals : R.string.setup_title),
+            getString(R.string.nav_tab_home),
             R.drawable.ic_gzh_doc, getString(R.string.setup_button_view_logs), this::onViewLogs);
 
         contentHost = new FrameLayout(this);
@@ -494,46 +495,6 @@ public class SetupActivity extends Activity {
     // ------------------------------------------------------------ Home page
 
     private void buildHomeSection(LinearLayout page) {
-        // Waru Edition @feature launcher 22/10/2026 Blue-and-gold branded home hero.
-        LinearLayout hero = UiKit.card(page);
-        hero.setBackgroundTintList(UiKit.tint(this, R.color.gzh_surface_container_high));
-        LinearLayout heroContent = new LinearLayout(this);
-        heroContent.setOrientation(LinearLayout.VERTICAL);
-        int heroPad = UiKit.dp(this, 20);
-        heroContent.setPadding(heroPad, heroPad, heroPad, heroPad);
-        android.graphics.drawable.GradientDrawable heroOutline = new android.graphics.drawable.GradientDrawable();
-        heroOutline.setColor(UiKit.color(this, R.color.gzh_surface_container_high));
-        heroOutline.setCornerRadius(UiKit.dp(this, 24));
-        heroOutline.setStroke(UiKit.dp(this, 1), UiKit.color(this, R.color.gzh_accent));
-        heroContent.setBackground(heroOutline);
-        TextView brand = new TextView(this);
-        brand.setText(R.string.waru_brand_title);
-        brand.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 30);
-        brand.setTypeface(android.graphics.Typeface.create("sans-serif-black", android.graphics.Typeface.BOLD));
-        brand.setLetterSpacing(0.035f);
-        brand.setTextColor(UiKit.color(this, R.color.gzh_primary));
-        heroContent.addView(brand);
-        TextView edition = new TextView(this);
-        edition.setText(R.string.waru_brand_edition);
-        edition.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12);
-        edition.setLetterSpacing(0.16f);
-        edition.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        edition.setTextColor(UiKit.color(this, R.color.gzh_accent));
-        LinearLayout.LayoutParams editionLp = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        editionLp.topMargin = UiKit.dp(this, 4);
-        heroContent.addView(edition, editionLp);
-        TextView gameSubtitle = new TextView(this);
-        gameSubtitle.setText(isGeneralsSelected(this)
-            ? R.string.setup_title_generals : R.string.setup_title);
-        gameSubtitle.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13);
-        gameSubtitle.setTextColor(UiKit.color(this, R.color.gzh_on_surface_variant));
-        LinearLayout.LayoutParams subtitleLp = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        subtitleLp.topMargin = UiKit.dp(this, 10);
-        heroContent.addView(gameSubtitle, subtitleLp);
-        hero.addView(heroContent, new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         // GeneralsX @feature Android port 04/10/2026 Which game this page is about. Play, the game
         // folder and its checks below follow it; the other pages are shared by both games.
         final boolean generals = isGeneralsSelected(this);

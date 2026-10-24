@@ -37,6 +37,9 @@ import android.graphics.Rect;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.view.Display;
+import android.view.Gravity;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.view.KeyEvent;
 import android.view.DisplayCutout;
 import android.view.RoundedCorner;
@@ -100,8 +103,14 @@ public class GeneralsZHActivity extends SDLActivity {
     // AndroidTextEditor.cpp. The engine calls show/hide from its own thread; the bar reports
     // back through the two native methods, which only queue for the engine's next frame.
     private TextEditorBar textEditorBar;
+    private WaruGameKeyboardOverlay gameKeyboardOverlay;
 
     private static native void nativeTextEditorChanged(String text, int serial);
+    private static native void nativeVirtualKey(int sdlScancode, boolean down);
+
+    static void sendVirtualKey(int sdlScancode, boolean down) {
+        nativeVirtualKey(sdlScancode, down);
+    }
     private static native void nativeTextEditorDone(String text, boolean submit, int serial);
 
     @SuppressWarnings("unused") // called via JNI
@@ -419,6 +428,25 @@ public class GeneralsZHActivity extends SDLActivity {
         }
 
         super.onCreate(savedInstanceState);
+        // GeneralsX @feature Waru Edition 22/10/2026 In-game transparent PC-style
+        // keyboard. It is a full-screen, click-through view: only its visible key
+        // bounds consume touches, so the battlefield underneath remains playable.
+        if (mLayout != null) {
+            gameKeyboardOverlay = new WaruGameKeyboardOverlay(this);
+            FrameLayout.LayoutParams keyboardParams = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            keyboardParams.gravity = Gravity.TOP | Gravity.START;
+            mLayout.addView(gameKeyboardOverlay, keyboardParams);
+            gameKeyboardOverlay.bringToFront();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        if (gameKeyboardOverlay != null) {
+            gameKeyboardOverlay.releaseHeldKeys();
+        }
+        super.onPause();
     }
 
     // GeneralsX @bugfix Android port 02/08/2026 A tester reported the camera

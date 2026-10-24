@@ -27,6 +27,8 @@
 #include "GameNetwork/NetworkDefs.h"
 #include "GameNetwork/NetworkInterface.h"
 
+#include <algorithm>
+
 
 FramePacer* TheFramePacer = nullptr;
 

@@ -372,22 +372,22 @@
     <string name="setup_control_scheme_classic">Классическое</string>
     <string name="setup_control_scheme_tactical">Тактическое</string>
     <string name="setup_control_scheme_custom">Своё</string>
-    <string name="setup_control_scheme_classic_desc">Как в оригинальной игре: приказ «двигаться» просто ведёт к точке, камера отдаляется на обычную высоту (её можно изменить в игре: Опции → Дополнительно), колонка армии открывается только с группами.</string>
-    <string name="setup_control_scheme_tactical_desc">Боевые юниты атакуют на ходу, колонка армии открывается сразу с кнопками армии, а камеру можно отдалить до четырёх раз выше.</string>
+    <string name="setup_control_scheme_classic_desc">Как в оригинальной игре: приказ «двигаться» просто ведёт к точке, камера останавливается на высоте карты, кнопок армии нет.</string>
+    <string name="setup_control_scheme_tactical_desc">Боевые юниты атакуют на ходу, в колонке армии появляются кнопки армии, а камеру можно отдалить сильнее.</string>
     <string name="setup_control_scheme_custom_desc">Ваше сочетание переключателей ниже.</string>
     <string name="setup_switch_attack_move">Атака на ходу</string>
     <string name="setup_switch_attack_move_desc">Приказ «двигаться» для боевых юнитов становится атакой с движением: они вступают в бой со всем, что встретят по пути. Бульдозеры и сборщики ресурсов просто едут.</string>
     <string name="setup_switch_army_buttons">Кнопки армии</string>
-    <string name="setup_switch_army_buttons_desc">Открывается ли колонка армии (её открывает кнопка + над левым краем командной панели, панель при этом сдвигается вправо) сразу с кнопками, которые выбирают все боевые юниты на экране или на всей карте, самолёты, вертолёты или наземные войска (повторное нажатие «Наземные» — по всей карте). Кнопка > в колонке показывает и прячет их в любой игре, что бы ни стояло здесь.</string>
+    <string name="setup_switch_army_buttons_desc">В колонке армии (её открывает кнопка + над левым краем командной панели, панель при этом сдвигается вправо): кнопки, которые выбирают все боевые юниты на экране или на всей карте, самолёты, вертолёты или наземные войска (повторное нажатие «Наземные» — по всей карте).</string>
     <string name="setup_switch_camera_high">Высокая камера</string>
     <string name="setup_switch_camera_high_desc">Камеру можно отдалить до четырёх раз дальше, чем позволяет карта.</string>
     <string name="setup_control_scheme_help">Применяется при следующем запуске игры. Работает и в схватке, и в кампании, и в сетевых играх: меняется только то, как вы отдаёте приказы, а не правила игры.</string>
     <string name="setup_appearance_title">Оформление</string>
-    <string name="setup_appearance_standard">Багряный</string>
-    <string name="setup_appearance_navy">Waru Blue</string>
-    <string name="setup_appearance_system">Королевское золото</string>
-    <string name="setup_appearance_light">Серебро</string>
-    <string name="setup_appearance_help">Выберите одну из четырёх палитр лаунчера Waru Edition: багряную, электрическую синюю Waru Blue, королевское золото на тёмных поверхностях или платиновое серебро. Меняется только лаунчер, графика игры остаётся прежней.</string>
+    <string name="setup_appearance_standard">Стандартное</string>
+    <string name="setup_appearance_navy">Сине-золотое</string>
+    <string name="setup_appearance_system">Как в системе</string>
+    <string name="setup_appearance_light">Дневное</string>
+    <string name="setup_appearance_help">Меняется только лаунчер. Стандартное — привычное тёмное оформление; Сине-золотое — тёмно-синее с золотом; Дневное — светлое; Как в системе — по настройке телефона (днём Дневное, ночью Стандартное). Графика игры не меняется.</string>
     <string name="setup_cursor_size_label">Размер курсора: %1$d%%</string>
     <string name="setup_switch_skip_intro">Пропускать заставки</string>
     <string name="setup_switch_skip_intro_desc">Логотипы EA, вступительное видео и другие ролики перед меню не показываются — игра сразу переходит к загрузке. Для обеих игр, и с модами тоже.</string>
@@ -506,7 +506,4 @@
     <string name="setup_sources_zh_art_missing">В папке Zero Hour нет TexturesZH.big, поэтому Generals не может взять оттуда картинки: %1$s</string>
     <string name="setup_sources_base_ok">Архивы оригинальной Generals для Zero Hour: %1$s</string>
     <string name="setup_sources_base_auto">Zero Hour ищет архивы оригинальной Generals в своей папке (ZH_Generals) или рядом с ней; если они в другом месте, выберите папку ниже.</string>
-    <string name="waru_brand_overline" translatable="false">COMMAND &amp; CONQUER • MOBILE EDITION</string>
-    <string name="waru_brand_title" translatable="false">Waru Edition</string>
-    <string name="waru_brand_edition" translatable="false">BLUE • GOLD • BATTLE READY</string>
 </resources>
