@@ -1,42 +1,68 @@
 # Waru Edition Cheat Menu — implementation plan
 
-This document defines the two requested modes. It is a plan, not a claim that the in-game cheats have already been implemented.
+**Status: design/integration map only. Runtime cheat behavior has not been implemented.** Do not describe this branch as a working cheat menu or distribute an APK as containing the feature until the native engine integration and tests below pass.
 
 ## Modes
 
-### 1. Local-only (single-device) mode
-- Android overlay can be opened, hidden, and fully disabled.
-- Toggles: invulnerable friendly units, infinite power, and +100,000 cash button.
-- This mode is for offline/skirmish or private testing only. Do not enable state-changing cheats in a network match: client-only state changes can cause desync/mismatch.
+### 1. Local-only (offline/skirmish)
+- Android in-game overlay can be opened, hidden, and fully disabled.
+- Toggles: friendly-unit invulnerability, infinite power, and a cash button that adds exactly 100,000 per tap.
+- Local-only cheats must be unavailable once a network session is active. Never silently apply local state edits to a network match.
 
 ### 2. Synchronized private-LAN mode
-- Cheats are available only when every participant explicitly opts in to the same private-match rules.
-- Cheat actions must be represented as deterministic game commands processed in the simulation, not as local UI edits.
-- All participants must use a compatible build/patch and the same cheat protocol/version.
-- Each action needs a stable command ID and deterministic target/player selection; all toggles and cash changes must be included in simulation state/checksums.
-- The host should reject a cheat action if a peer lacks the compatible feature/version or has not accepted the rules. If agreement is absent, disable synchronized cheats for the match.
-- No claim of mismatch-free operation until LAN tests pass with checksum/desync logging.
+- Every participant must explicitly opt into the same private-match cheat rules.
+- Cheat actions must be deterministic simulation commands, not local UI edits.
+- Every peer must use a compatible build, data patch, simulation rate, and cheat protocol version.
+- Use stable command IDs and deterministic player/target selection. Include cheat state in the engine's snapshot/CRC path where appropriate.
+- Host rejects commands unless every peer advertises compatibility and has opted in. If agreement is absent, disable the synchronized feature for that match.
+- Do not claim desync-free behavior until multi-device LAN tests and replay/checksum tests pass.
 
-## UI requirements
-- Compact draggable Android overlay; explicit open/close button.
-- A separate visibility toggle and master enable/disable switch.
-- Per-cheat switches; cash action adds exactly 100,000 once per tap.
-- Touch targets must not intercept ordinary game controls while hidden.
-- Accessibility labels and persisted UI position/visibility preference.
+## Repository integration map (inspected)
 
-## Engine work required
-- Find the game-logic owner/player APIs for cash, object damage/health, and power production/consumption.
-- Add deterministic simulation commands for each cheat, rather than modifying only Android-side state.
-- Define and serialize synchronized cheat state; include it in snapshot/CRC paths as appropriate.
-- Gate use by private-match opt-in and build/protocol compatibility.
-- Test offline first, then two Android devices, then Android-to-PC LAN with matching simulation rate and data patch.
-- Test toggling each feature mid-match, late-joining/reconnect behavior if supported, replay/snapshot consistency, and cheat disable/reenable.
+- Android game activity: `android/app/src/main/java/com/generalsx/zerohour/GeneralsZHActivity.java`.
+  - This activity already bridges Java UI and native code for touch/keyboard features; use its established lifecycle/bridge pattern rather than creating an unrelated floating window that may steal game input.
+- Existing touch routing: `Core/GameEngineDevice/Source/SDL3Device/GameClient/TouchInput.cpp`.
+  - Preserve ordinary touch, selection, and order handling while the cheat panel is hidden.
+- Player state and money API: `Generals/Code/GameEngine/Include/Common/Player.h` exposes `Player::getMoney()`; `Generals/Code/GameEngine/Include/Common/Money.h` exposes `Money::deposit(UnsignedInt, Bool, Bool)`.
+  - A cash button must enqueue one game-thread/simulation action and call deposit once per tap; it must not run from a UI redraw or background timer.
+- Power API: `Generals/Code/GameEngine/Include/Common/Energy.h` exposes production/consumption and power-supply ratio APIs. The infinite-power behavior needs to be implemented in simulation logic and snapshot/CRC handling, not by editing only the displayed power value.
+- Damage entry point: `Generals/Code/GameEngine/Include/GameLogic/Object.h` exposes `Object::attemptDamage(DamageInfo*)` and `Object::healCompletely()`. Invulnerability must be scoped to the correct player-owned objects and evaluated deterministically by the game logic.
+- Android CI: `.github/workflows/build-android.yml` builds the 30 Hz and 60 Hz native engines, packages the APK, and checks required native libraries. It supports `workflow_dispatch` and pull-request builds.
+
+These APIs are useful entry points, but their existence alone does not provide a safe complete implementation. The simulation-thread dispatch path, game-message protocol, player identity checks, and snapshot/CRC changes still need to be implemented and reviewed.
+
+## Required implementation order
+
+1. **Engine-safe local mode first**
+   - Add a small cheat state owned by the game simulation and reset it on every new match.
+   - Add simulation-thread actions for toggling invulnerability/power and depositing +100,000.
+   - Add an explicit network-session guard so local-only actions are rejected in multiplayer.
+   - Add the Android panel with a persistent open/close handle, draggable position, labels, and persisted visibility/position. Hidden means the panel consumes no touch input.
+2. **Automated validation**
+   - Add tests or a native test harness for +100,000 exactly once per tap, no money overflow, reset between matches, no effect on enemy units, and local-only rejection in network sessions.
+   - Run `Build Android` in GitHub Actions against this branch and inspect the build logs and APK artifact. A green compile is necessary but not proof of gameplay correctness.
+3. **Synchronized private LAN**
+   - Introduce versioned, deterministic game commands and peer opt-in/compatibility negotiation.
+   - Include the feature state in the relevant snapshot/checksum/replay path.
+   - Reject the feature for public/online sessions unless that service explicitly supports the protocol.
+   - Test two Android devices first, then Android-to-PC only if the PC client uses the same compatible protocol, data patch, and simulation rate.
 
 ## Acceptance criteria
+
 - Local mode never silently activates in multiplayer.
 - LAN mode cannot activate unless all players consent and protocol/build checks pass.
-- Cash adds exactly 100,000 per tap; no repeated additions from UI redraws.
-- Unit invulnerability affects only the intended friendly units and behaves deterministically on all peers.
-- Power remains available without introducing divergent simulation state.
-- Menu can be hidden and restored without blocking game input.
-- CI build and real-device LAN tests pass before describing the feature as complete.
+- Cash adds exactly 100,000 per tap, without duplicate additions from redraws.
+- Invulnerability affects only intended friendly units and is deterministic across peers.
+- Power remains available without divergent simulation state.
+- The menu can be hidden/restored without blocking ordinary game input.
+- Android CI build and real-device tests pass before calling the feature complete.
+
+## How to run the Android build (no local toolchain required)
+
+1. Open the repository's **Actions** tab.
+2. Select **Build Android**.
+3. Click **Run workflow**, select `feat/waru-multiplayer-cheat-menu`, and start the run.
+4. Open the run and wait for the build job to finish. If it fails, open the failed step and copy the first meaningful compiler/configuration error.
+5. If it succeeds, download the APK artifact from that run. Do not install it as a feature-complete cheat build until the native behavior and LAN acceptance tests are implemented and passed.
+
+GitHub documents manual workflow runs here: https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow
