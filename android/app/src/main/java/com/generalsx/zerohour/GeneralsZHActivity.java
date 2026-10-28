@@ -104,6 +104,7 @@ public class GeneralsZHActivity extends SDLActivity {
     // back through the two native methods, which only queue for the engine's next frame.
     private TextEditorBar textEditorBar;
     private WaruGameKeyboardOverlay gameKeyboardOverlay;
+    private WaruCheatMenuOverlay waruCheatMenuOverlay;
 
     private static native void nativeTextEditorChanged(String text, int serial);
     private static native void nativeVirtualKey(int sdlScancode, boolean down);
@@ -438,6 +439,18 @@ public class GeneralsZHActivity extends SDLActivity {
             keyboardParams.gravity = Gravity.TOP | Gravity.START;
             mLayout.addView(gameKeyboardOverlay, keyboardParams);
             gameKeyboardOverlay.bringToFront();
+
+            // Waru Edition cheat menu: attach to the actual SDL game layout so it
+            // is visible over gameplay, not only on the launcher/settings screens.
+            // The controls remain disabled until deterministic native cheat commands
+            // are implemented; this prevents a visual toggle from falsely implying
+            // that game state or multiplayer simulation has changed.
+            waruCheatMenuOverlay = new WaruCheatMenuOverlay(this);
+            FrameLayout.LayoutParams cheatParams = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            cheatParams.gravity = Gravity.TOP | Gravity.START;
+            mLayout.addView(waruCheatMenuOverlay, cheatParams);
+            waruCheatMenuOverlay.bringToFront();
         }
     }
 
