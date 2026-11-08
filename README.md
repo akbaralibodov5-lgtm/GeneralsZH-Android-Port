@@ -238,12 +238,6 @@ architecture, bring-up log): [docs/port/ANDROID_PORT.md](docs/port/ANDROID_PORT.
   request: Android clients cannot join PC games, and PC clients cannot join
   Android games. Online play between Android players works as before.
 
-## Support the project
-
-This port is developed with [Claude Code](https://claude.com/claude-code) (Anthropic's Claude),
-and the subscription is paid out of pocket. If the port is useful to you and you'd like to help
-keep it going, donations are welcome — they go to that subscription.
-
 ## Lineage & credits
 
 This port is the newest link in a long chain, and the earlier links did foundational
